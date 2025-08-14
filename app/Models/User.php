@@ -9,6 +9,8 @@ use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class User extends Authenticatable
 {
@@ -63,5 +65,32 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    public function favoriteItems(): BelongsToMany
+    {
+        return $this->belongsToMany(Item::class, 'user_favorites')
+            ->withTimestamps();
+    }
+
+    public function favorites(): HasMany
+    {
+        return $this->hasMany(UserFavorite::class);
+    }
+
+    public function isFavorite(Item $item): bool
+    {
+        return $this->favoriteItems()->where('items.id', $item->id)->exists();
+    }
+
+    public function toggleFavorite(Item $item): bool
+    {
+        if ($this->isFavorite($item)) {
+            $this->favoriteItems()->detach($item->id);
+            return false;
+        } else {
+            $this->favoriteItems()->attach($item->id);
+            return true;
+        }
     }
 }

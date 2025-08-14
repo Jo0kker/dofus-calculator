@@ -5,6 +5,7 @@ namespace App\Http\Middleware;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 use Tighten\Ziggy\Ziggy;
+use App\Models\Server;
 
 class HandleInertiaRequests extends Middleware
 {
@@ -36,6 +37,12 @@ class HandleInertiaRequests extends Middleware
                 ...(new Ziggy)->toArray(),
                 'location' => $request->url(),
             ],
+            'servers' => Server::where('is_active', true)
+                ->where('is_temporary', false)
+                ->orderBy('display_order')
+                ->orderBy('name')
+                ->get(),
+            'selected_server_id' => session('selected_server_id'),
         ];
     }
 }

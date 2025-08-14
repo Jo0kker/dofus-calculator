@@ -7,6 +7,9 @@ import Dropdown from '@/Components/Dropdown.vue';
 import DropdownLink from '@/Components/DropdownLink.vue';
 import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
+import ServerSelector from '@/Components/ServerSelector.vue';
+import AppFooter from '@/Components/AppFooter.vue';
+import { useServerSelection } from '@/Composables/useServerSelection';
 
 defineProps({
     title: String,
@@ -48,13 +51,22 @@ const logout = () => {
 
                             <!-- Navigation Links -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                                    Dashboard
+                                <NavLink :href="route('calculator.index')" :active="route().current('calculator.*')">
+                                    Calculateur
+                                </NavLink>
+                                <NavLink :href="route('items.index')" :active="route().current('items.*')">
+                                    Items
+                                </NavLink>
+                                <NavLink :href="route('favorites.index')" :active="route().current('favorites.*')">
+                                    Favoris
                                 </NavLink>
                             </div>
                         </div>
 
-                        <div class="hidden sm:flex sm:items-center sm:ms-6">
+                        <div class="hidden sm:flex sm:items-center sm:ms-6 space-x-4">
+                            <!-- Server Selector -->
+                            <ServerSelector />
+                            
                             <div class="ms-3 relative">
                                 <!-- Teams Dropdown -->
                                 <Dropdown v-if="$page.props.jetstream.hasTeamFeatures" align="right" width="60">
@@ -191,8 +203,14 @@ const logout = () => {
                 <!-- Responsive Navigation Menu -->
                 <div :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}" class="sm:hidden">
                     <div class="pt-2 pb-3 space-y-1">
-                        <ResponsiveNavLink :href="route('dashboard')" :active="route().current('dashboard')">
-                            Dashboard
+                        <ResponsiveNavLink :href="route('calculator.index')" :active="route().current('calculator.*')">
+                            Calculateur
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('items.index')" :active="route().current('items.*')">
+                            Items
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink :href="route('favorites.index')" :active="route().current('favorites.*')">
+                            Favoris
                         </ResponsiveNavLink>
                     </div>
 
@@ -284,6 +302,9 @@ const logout = () => {
             <main>
                 <slot />
             </main>
+            
+            <!-- Footer -->
+            <AppFooter />
         </div>
     </div>
 </template>
