@@ -1,3 +1,10 @@
+[providers]
+# Définir l'ordre de priorité pour éviter les conflits de LICENSE
+priority = ["php", "node"]
+
+[variables]
+NODE_VERSION = "22"
+
 [phases.setup]
 nixPkgs = ["...", "python311Packages.supervisor"]
 
