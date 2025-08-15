@@ -4,14 +4,24 @@ import { Link } from '@inertiajs/vue3';
 
 <template>
     <Link :href="'/'">
-        <svg
-            class="size-16"
-            viewBox="0 0 48 48"
-            fill="none"
-            xmlns="http://www.w3.org/2000/svg"
-        >
-            <path d="M11.395 44.428C4.557 40.198 0 32.632 0 24 0 10.745 10.745 0 24 0a23.891 23.891 0 0113.997 4.502c-.2 17.907-11.097 33.245-26.602 39.926z" fill="#6875F5" />
-            <path d="M14.134 45.885A23.914 23.914 0 0024 48c13.255 0 24-10.745 24-24 0-3.516-.756-6.856-2.115-9.866-4.659 15.143-16.608 27.092-31.75 31.751z" fill="#6875F5" />
-        </svg>
+        <div class="flex flex-col items-center">
+            <!-- Icône Kama -->
+            <svg class="w-20 h-20 mb-2" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <!-- Kama central (pièce principale) -->
+                <circle cx="24" cy="24" r="14" fill="#F59E0B" stroke="#D97706" stroke-width="2"/>
+                <!-- K stylisé au centre -->
+                <path d="M18 16V32M18 24L28 16M18 24L28 32" 
+                      stroke="#7C2D12" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>
+                <!-- Petites étoiles/brillance -->
+                <circle cx="20" cy="20" r="1.5" fill="#FEF3C7"/>
+                <circle cx="28" cy="28" r="1.5" fill="#FEF3C7"/>
+            </svg>
+            
+            <!-- Texte du logo -->
+            <div class="text-center">
+                <div class="text-2xl font-bold text-gray-900">Dofus Calc</div>
+                <div class="text-xs text-gray-600">Calculateur de rentabilité</div>
+            </div>
+        </div>
     </Link>
 </template>
