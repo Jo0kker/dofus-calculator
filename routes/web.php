@@ -19,9 +19,6 @@ Route::middleware([
     config('jetstream.auth_session'),
     'verified',
 ])->group(function () {
-    Route::get('/dashboard', function () {
-        return redirect()->route('calculator.index');
-    })->name('dashboard');
     
     // Calculator routes
     Route::get('/calculator', [CalculatorController::class, 'index'])->name('calculator.index');
