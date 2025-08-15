@@ -37,24 +37,27 @@ class CalculatorController extends Controller
         if ($server) {
             $query = Recipe::query();
 
-            // Forcer une profession par défaut si pas spécifiée
-            $profession = $request->get('profession', 'Forgeron'); // ou prendre la première profession
-            $query->where('profession', $profession);
+            // Profession obligatoire
+            if (!$request->filled('profession')) {
+                // Pas de profession = pas de résultats
+                $profitableRecipes = [];
+            } else {
+                $query->where('profession', $request->profession);
 
-            if ($request->filled('min_level')) {
-                $query->where('profession_level', '>=', $request->min_level);
-            }
+                if ($request->filled('min_level')) {
+                    $query->where('profession_level', '>=', $request->min_level);
+                }
 
-            if ($request->filled('max_level')) {
-                $query->where('profession_level', '<=', $request->max_level);
-            }
+                if ($request->filled('max_level')) {
+                    $query->where('profession_level', '<=', $request->max_level);
+                }
 
-            $recipes = $query->get(); // Plus besoin de limit maintenant
-            
-            // Charger les relations après
-            $recipes->load('item', 'ingredients');
+                $recipes = $query->get();
+                
+                // Charger les relations après
+                $recipes->load('item', 'ingredients');
 
-            foreach ($recipes as $recipe) {
+                foreach ($recipes as $recipe) {
                 $profitData = $recipe->calculateProfit($server);
 
                 if ($profitData && $profitData['profit'] > 0) {
@@ -84,7 +87,8 @@ class CalculatorController extends Controller
                 }
             });
 
-            $profitableRecipes = array_slice($profitableRecipes, 0, 50);
+                $profitableRecipes = array_slice($profitableRecipes, 0, 50);
+            }
         }
 
         $professions = Recipe::distinct()->pluck('profession')->filter();

@@ -19,8 +19,9 @@
                                 v-model="filters.profession"
                                 @change="applyFilters"
                                 class="w-full border-gray-300 rounded-md shadow-sm"
+                                required
                             >
-                                <option value="">Tous les métiers</option>
+                                <option value="" disabled>Sélectionnez un métier</option>
                                 <option v-for="profession in professions" :key="profession" :value="profession">
                                     {{ profession }}
                                 </option>
