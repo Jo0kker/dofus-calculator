@@ -53,4 +53,5 @@ Route::middleware([
 
 // Public routes that don't require authentication
 Route::get('/calculator-public', [CalculatorController::class, 'index'])->name('calculator.public');
+
 Route::get('/items-public', [ItemController::class, 'index'])->name('items.public');
