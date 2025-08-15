@@ -1,3 +1,14 @@
+# Stage Composer pour installer les dépendances PHP
+FROM composer:2 AS composer
+
+WORKDIR /app
+
+# Copier les fichiers composer
+COPY composer.json composer.lock ./
+
+# Installer les dépendances PHP
+RUN composer install --no-dev --optimize-autoloader --no-scripts
+
 # Build stage pour les assets JS
 FROM node:22-alpine AS frontend
 
@@ -6,13 +17,14 @@ WORKDIR /app
 # Copier les fichiers de dépendances
 COPY package.json yarn.lock ./
 
-# Installer les dépendances
+# Installer les dépendances Node
 RUN yarn install --frozen-lockfile
 
-# Copier le reste du code
+# Copier le code source ET les vendor (pour Ziggy)
 COPY . .
+COPY --from=composer /app/vendor ./vendor
 
-# Build les assets
+# Build les assets (maintenant Ziggy est disponible)
 RUN yarn build
 
 # Stage PHP principal
@@ -45,8 +57,8 @@ COPY . .
 # Copy built assets from frontend stage
 COPY --from=frontend /app/public/build ./public/build
 
-# Install PHP dependencies
-RUN composer install --no-dev --optimize-autoloader
+# Copy vendor from composer stage
+COPY --from=composer /app/vendor ./vendor
 
 # Create storage directories and set permissions
 RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
