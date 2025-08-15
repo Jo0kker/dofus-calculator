@@ -120,6 +120,7 @@
                                     <Link
                                         v-if="items.prev_page_url"
                                         :href="items.prev_page_url"
+                                        :data="filters"
                                         class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                     >
                                         Précédent
@@ -127,6 +128,7 @@
                                     <Link
                                         v-if="items.next_page_url"
                                         :href="items.next_page_url"
+                                        :data="filters"
                                         class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
                                     >
                                         Suivant
@@ -150,6 +152,7 @@
                                                 <Link
                                                     v-if="link.url"
                                                     :href="link.url"
+                                                    :data="filters"
                                                     :class="[
                                                         link.active
                                                             ? 'z-10 bg-indigo-50 border-indigo-500 text-indigo-600'

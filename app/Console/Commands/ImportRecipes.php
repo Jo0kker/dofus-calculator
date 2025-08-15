@@ -13,7 +13,7 @@ class ImportRecipes extends Command
      * @var string
      */
     protected $signature = 'dofus:import-recipes
-                            {--limit=500 : Maximum number of recipes to import}';
+                            {--limit= : Maximum number of recipes to import (default: all)}';
 
     /**
      * The console command description.
@@ -29,9 +29,15 @@ class ImportRecipes extends Command
     {
         $this->info('Starting DofusDB recipes import (recipe-first approach)...');
 
-        $limit = (int) $this->option('limit');
-
-        $this->info("Importing up to $limit recipes with their items and ingredients...");
+        $limit = $this->option('limit');
+        
+        if ($limit) {
+            $limit = (int) $limit;
+            $this->info("Importing up to $limit recipes with their items and ingredients...");
+        } else {
+            $limit = PHP_INT_MAX; // Import toutes les recettes disponibles
+            $this->info("Importing ALL available recipes with their items and ingredients...");
+        }
 
         $result = $importService->importRecipesFirst($limit);
 

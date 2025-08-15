@@ -449,16 +449,30 @@ class DofusDBImportService
         }
 
         DB::transaction(function () use ($resultItem, $recipeData, &$imported, &$updated, $extractString) {
-            // Mapper les job IDs aux noms de métiers
+            // Mapper les job IDs aux noms de métiers (récupérés depuis /jobs)
             $jobNames = [
-                11 => 'Forgeron d\'épées',
-                13 => 'Forgeron de dagues', 
-                14 => 'Forgeron de marteaux',
-                15 => 'Forgeur de pelles',
-                16 => 'Sculpteur d\'arcs',
-                17 => 'Sculpteur de baguettes',
-                18 => 'Sculpteur de bâtons',
-                // Ajoutez d'autres mappings selon vos besoins
+                1 => 'Base',
+                2 => 'Bûcheron', 
+                11 => 'Forgeron',
+                13 => 'Sculpteur',
+                15 => 'Cordonnier',
+                16 => 'Bijoutier',
+                24 => 'Mineur',
+                26 => 'Alchimiste',
+                27 => 'Tailleur',
+                28 => 'Paysan',
+                36 => 'Pêcheur',
+                41 => 'Chasseur',
+                44 => 'Forgemage',
+                48 => 'Sculptemage',
+                60 => 'Façonneur',
+                62 => 'Cordomage',
+                63 => 'Joaillomage',
+                64 => 'Costumage',
+                65 => 'Bricoleur',
+                74 => 'Façomage',
+                75 => 'Parchomage',
+                78 => 'Bestiologue',
             ];
             
             $jobName = $jobNames[$recipeData['jobId'] ?? null] ?? 'Métier inconnu';
