@@ -13,7 +13,6 @@ nixPkgs = [
   "...",
   "python311Packages.supervisor",
   "nodejs_22",
-  "yarn",
   # Solution au conflit LICENSE entre yarn et composer
   # On baisse la priorité de composer pour éviter le conflit
   '(lib.recursiveUpdate php84Packages.composer { meta.priority = php84Packages.composer.meta.priority or 0 -1; })'
