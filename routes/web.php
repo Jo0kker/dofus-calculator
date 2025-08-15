@@ -11,10 +11,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
 Route::get('/', function () {
-    if (auth()->check()) {
-        return redirect()->route('calculator.index');
-    }
-    return redirect()->route('calculator.public');
+    return redirect()->route('calculator.index');
 });
 
 Route::middleware([
@@ -52,6 +49,4 @@ Route::middleware([
 });
 
 // Public routes that don't require authentication
-Route::get('/calculator-public', [CalculatorController::class, 'index'])->name('calculator.public');
-
 Route::get('/items-public', [ItemController::class, 'index'])->name('items.public');

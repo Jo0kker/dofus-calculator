@@ -12,13 +12,21 @@ class CalculatorController extends Controller
 {
     public function index(Request $request)
     {
-        $serverId = session('selected_server_id');
+        try {
+            $serverId = session('selected_server_id');
+        } catch (\Exception $e) {
+            $serverId = null;
+        }
         
         if (!$serverId) {
             $defaultServer = Server::where('is_active', true)->first();
             $serverId = $defaultServer ? $defaultServer->id : null;
             if ($serverId) {
-                session(['selected_server_id' => $serverId]);
+                try {
+                    session(['selected_server_id' => $serverId]);
+                } catch (\Exception $e) {
+                    // Ignore session errors
+                }
             }
         }
         
@@ -96,7 +104,12 @@ class CalculatorController extends Controller
     
     public function show(Recipe $recipe, Request $request)
     {
-        $serverId = session('selected_server_id');
+        try {
+            $serverId = session('selected_server_id');
+        } catch (\Exception $e) {
+            $serverId = null;
+        }
+        
         $server = Server::find($serverId);
         
         if (!$server) {
