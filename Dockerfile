@@ -1,5 +1,5 @@
 # Build stage pour les assets JS
-FROM node:18-alpine AS frontend
+FROM node:22-alpine AS frontend
 
 WORKDIR /app
 
@@ -16,7 +16,7 @@ COPY . .
 RUN yarn build
 
 # Stage PHP principal
-FROM php:8.2-fpm-alpine
+FROM php:8.4-fpm-alpine
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -28,7 +28,8 @@ RUN apk add --no-cache \
     unzip \
     postgresql-dev \
     nginx \
-    supervisor
+    supervisor \
+    netcat-openbsd
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath opcache
