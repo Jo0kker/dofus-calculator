@@ -51,8 +51,9 @@ COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
 WORKDIR /var/www/html
 
-# Copy application files
+# Copy application files (exclude .env, use environment variables from Dokploy)
 COPY . .
+RUN rm -f .env
 
 # Copy built assets from frontend stage
 COPY --from=frontend /app/public/build ./public/build

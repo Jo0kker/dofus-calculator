@@ -20,10 +20,20 @@ php artisan migrate --force
 
 # Clear and cache configurations
 echo "Optimizing application..."
+php artisan config:clear
+
+# Debug AVANT cache
+echo "Variables d'env avant cache:"
+php artisan tinker --execute="echo config('app.url');"
+
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
 php artisan event:cache
+
+# Debug APRÈS cache  
+echo "Variables d'env après cache:"
+php artisan tinker --execute="echo config('app.url');"
 
 # Storage link
 php artisan storage:link 2>/dev/null || true
