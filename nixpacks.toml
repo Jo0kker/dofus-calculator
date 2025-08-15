@@ -1,6 +1,5 @@
-[providers]
-# Définir l'ordre de priorité pour éviter les conflits de LICENSE
-priority = ["php", "node"]
+# Ordre de priorité des providers pour éviter les conflits
+providers = ["php", "node"]
 
 [variables]
 NODE_VERSION = "22"
