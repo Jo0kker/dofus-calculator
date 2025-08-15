@@ -17,7 +17,7 @@ class CalculatorController extends Controller
         } catch (\Exception $e) {
             $serverId = null;
         }
-        
+
         if (!$serverId) {
             $defaultServer = Server::where('is_active', true)->first();
             $serverId = $defaultServer ? $defaultServer->id : null;
@@ -29,40 +29,34 @@ class CalculatorController extends Controller
                 }
             }
         }
-        
+
         $server = Server::find($serverId);
-        
+
         $profitableRecipes = [];
-        
+
         if ($server) {
-            $query = Recipe::with([
-                'item.prices' => function ($q) use ($serverId) {
-                    $q->where('server_id', $serverId)
-                      ->where('status', 'approved');
-                },
-                'ingredients.prices' => function ($q) use ($serverId) {
-                    $q->where('server_id', $serverId)
-                      ->where('status', 'approved');
-                }
-            ]);
-            
+            $query = Recipe::query();
+
             if ($request->filled('profession')) {
                 $query->where('profession', $request->profession);
             }
-            
+
             if ($request->filled('min_level')) {
                 $query->where('profession_level', '>=', $request->min_level);
             }
-            
+
             if ($request->filled('max_level')) {
                 $query->where('profession_level', '<=', $request->max_level);
             }
-            
+
             $recipes = $query->get();
             
+            // Charger les relations après
+            $recipes->load('item', 'ingredients');
+
             foreach ($recipes as $recipe) {
                 $profitData = $recipe->calculateProfit($server);
-                
+
                 if ($profitData && $profitData['profit'] > 0) {
                     $profitableRecipes[] = [
                         'recipe' => $recipe,
@@ -74,10 +68,10 @@ class CalculatorController extends Controller
                     ];
                 }
             }
-            
+
             usort($profitableRecipes, function ($a, $b) use ($request) {
                 $sortBy = $request->get('sort_by', 'profit');
-                
+
                 switch ($sortBy) {
                     case 'profit_margin':
                         return $b['profit_margin'] <=> $a['profit_margin'];
@@ -89,19 +83,19 @@ class CalculatorController extends Controller
                         return $b['profit'] <=> $a['profit'];
                 }
             });
-            
+
             $profitableRecipes = array_slice($profitableRecipes, 0, 50);
         }
-        
+
         $professions = Recipe::distinct()->pluck('profession')->filter();
-        
+
         return Inertia::render('Calculator/Index', [
             'profitableRecipes' => $profitableRecipes,
             'professions' => $professions,
             'filters' => $request->only(['profession', 'min_level', 'max_level', 'sort_by']),
         ]);
     }
-    
+
     public function show(Recipe $recipe, Request $request)
     {
         try {
@@ -109,13 +103,13 @@ class CalculatorController extends Controller
         } catch (\Exception $e) {
             $serverId = null;
         }
-        
+
         $server = Server::find($serverId);
-        
+
         if (!$server) {
             return redirect()->route('calculator.index');
         }
-        
+
         $recipe->load([
             'item.prices' => function ($q) use ($serverId) {
                 $q->where('server_id', $serverId)
@@ -126,9 +120,9 @@ class CalculatorController extends Controller
                   ->where('status', 'approved');
             }
         ]);
-        
+
         $profitData = $recipe->calculateProfit($server);
-        
+
         return Inertia::render('Calculator/Show', [
             'recipe' => $recipe,
             'profitData' => $profitData,
