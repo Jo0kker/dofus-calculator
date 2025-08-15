@@ -37,9 +37,9 @@ class CalculatorController extends Controller
         if ($server) {
             $query = Recipe::query();
 
-            if ($request->filled('profession')) {
-                $query->where('profession', $request->profession);
-            }
+            // Forcer une profession par défaut si pas spécifiée
+            $profession = $request->get('profession', 'Forgeron'); // ou prendre la première profession
+            $query->where('profession', $profession);
 
             if ($request->filled('min_level')) {
                 $query->where('profession_level', '>=', $request->min_level);
@@ -49,7 +49,7 @@ class CalculatorController extends Controller
                 $query->where('profession_level', '<=', $request->max_level);
             }
 
-            $recipes = $query->get();
+            $recipes = $query->get(); // Plus besoin de limit maintenant
             
             // Charger les relations après
             $recipes->load('item', 'ingredients');
