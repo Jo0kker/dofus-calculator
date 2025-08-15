@@ -31,7 +31,7 @@ php artisan route:cache
 php artisan view:cache
 php artisan event:cache
 
-# Debug APRÈS cache  
+# Debug APRÈS cache
 echo "Variables d'env après cache:"
 php artisan tinker --execute="echo config('app.url');"
 
