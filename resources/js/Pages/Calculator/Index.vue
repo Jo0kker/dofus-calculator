@@ -150,7 +150,7 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
                                             <Link 
-                                                :href="route('calculator.show', result.recipe.id)"
+                                                :href="route('items.show', result.item.id)"
                                                 class="text-indigo-600 hover:text-indigo-900"
                                             >
                                                 Détails
