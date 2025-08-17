@@ -65,11 +65,17 @@ class ItemController extends Controller
             },
         ]);
         
+        // Récupérer les recettes qui utilisent cet item
+        $usedInRecipes = \App\Models\Recipe::whereHas('ingredients', function ($query) use ($item) {
+            $query->where('item_id', $item->id);
+        })->with('item')->get();
+        
         // Vérifier si l'item est dans les favoris de l'utilisateur connecté
         $isFavorite = auth()->check() ? auth()->user()->isFavorite($item) : false;
         
         return Inertia::render('Items/Show', [
             'item' => $item,
+            'usedInRecipes' => $usedInRecipes,
             'isFavorite' => $isFavorite,
         ]);
     }
