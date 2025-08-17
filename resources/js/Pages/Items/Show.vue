@@ -115,7 +115,7 @@
                                 
                                 <!-- Recipe Tab -->
                                 <div v-show="activeTab === 'recipe' && item.recipe">
-                                    <div class="space-y-2">
+                                    <div v-if="item.recipe" class="space-y-2">
                                         <p class="text-sm text-gray-600">
                                             <span class="font-medium">Métier:</span> {{ item.recipe.profession }}
                                             <span v-if="item.recipe.profession_level">
