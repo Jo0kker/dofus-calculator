@@ -19,8 +19,8 @@ import { Link } from '@inertiajs/vue3';
             
             <!-- Texte du logo -->
             <div class="text-center">
-                <div class="text-2xl font-bold text-gray-900">Dofus Calc</div>
-                <div class="text-xs text-gray-600">Calculateur de rentabilité</div>
+                <div class="text-2xl font-bold text-gray-900 dark:text-white">Dofus Calc</div>
+                <div class="text-xs text-gray-600 dark:text-gray-300">Calculateur de rentabilité</div>
             </div>
         </div>
     </Link>
