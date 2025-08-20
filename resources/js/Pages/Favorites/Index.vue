@@ -13,7 +13,7 @@
                     <p class="text-gray-500">Veuillez sélectionner un serveur pour analyser vos favoris</p>
                 </div>
 
-                <div v-else-if="favorites.length === 0" class="bg-white rounded-lg shadow p-6 text-center">
+                <div v-else-if="!favorites || favorites.length === 0" class="bg-white rounded-lg shadow p-6 text-center">
                     <p class="text-gray-500">Aucun favori ajouté. Ajoutez des items depuis la page des items !</p>
                 </div>
 
@@ -27,14 +27,20 @@
                             <!-- Item Header -->
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center space-x-4">
-                                    <img 
-                                        v-if="favorite.item.image_url" 
-                                        :src="favorite.item.image_url" 
-                                        :alt="favorite.item.name"
-                                        class="w-16 h-16 object-contain"
-                                    />
+                                    <Link :href="route('items.show', favorite.item.id)">
+                                        <img 
+                                            v-if="favorite.item.image_url" 
+                                            :src="favorite.item.image_url" 
+                                            :alt="favorite.item.name"
+                                            class="w-16 h-16 object-contain hover:opacity-80 transition-opacity"
+                                        />
+                                    </Link>
                                     <div>
-                                        <h3 class="text-xl font-bold text-gray-900">{{ favorite.item.name }}</h3>
+                                        <h3 class="text-xl font-bold text-gray-900">
+                                            <Link :href="route('items.show', favorite.item.id)" class="hover:text-blue-600 transition-colors">
+                                                {{ favorite.item.name }}
+                                            </Link>
+                                        </h3>
                                         <p v-if="favorite.item.level" class="text-sm text-gray-500">
                                             Niveau {{ favorite.item.level }}
                                         </p>
@@ -72,7 +78,7 @@
                             <!-- Craft Tree -->
                             <div v-if="favorite.craft_tree && favorite.craft_tree.length > 0" class="border-t pt-4">
                                 <h4 class="font-semibold text-gray-900 mb-3">Arbre de craft optimal</h4>
-                                <CraftTree :tree="favorite.craft_tree" :level="0" />
+                                <CraftTree :tree="favorite.craft_tree" :level="0" :route="route" :Link="Link" />
                             </div>
                         </div>
                     </div>
@@ -84,13 +90,13 @@
 
 <script setup>
 import { ref } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 
 // Composant Craft Tree
 const CraftTree = {
-    props: ['tree', 'level'],
+    props: ['tree', 'level', 'route', 'Link'],
     template: `
         <div class="space-y-2">
             <div 
@@ -99,15 +105,22 @@ const CraftTree = {
                 :class="['flex items-center p-2 rounded border-l-4', getMethodBorderClass(node.chosen_method)]"
                 :style="{ marginLeft: level * 20 + 'px' }"
             >
-                <img 
-                    v-if="node.item.image_url" 
-                    :src="node.item.image_url" 
-                    :alt="node.item.name"
-                    class="w-8 h-8 mr-3"
-                />
+                <component :is="Link" :href="route('items.show', node.item.id)" class="shrink-0">
+                    <img 
+                        v-if="node.item.image_url" 
+                        :src="node.item.image_url" 
+                        :alt="node.item.name"
+                        class="w-8 h-8 mr-3 hover:opacity-80 transition-opacity"
+                    />
+                </component>
                 <div class="flex-1">
                     <div class="flex items-center justify-between">
-                        <span class="font-medium">{{ node.quantity }}x {{ node.item.name }}</span>
+                        <span class="font-medium">
+                            {{ node.quantity }}x 
+                            <component :is="Link" :href="route('items.show', node.item.id)" class="hover:text-blue-600 transition-colors">
+                                {{ node.item.name }}
+                            </component>
+                        </span>
                         <div class="text-sm">
                             <span v-if="node.chosen_method === 'buy'" class="text-blue-600">
                                 Acheter: {{ formatNumber(node.direct_price) }} K chacun
@@ -121,7 +134,7 @@ const CraftTree = {
                 </div>
             </div>
             <div v-for="node in tree" :key="'sub-' + node.item.id">
-                <CraftTree v-if="node.subtree && node.subtree.length > 0" :tree="node.subtree" :level="level + 1" />
+                <CraftTree v-if="node.subtree && node.subtree.length > 0" :tree="node.subtree" :level="level + 1" :route="route" :Link="Link" />
             </div>
         </div>
     `,

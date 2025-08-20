@@ -14,15 +14,11 @@ class ItemController extends Controller
         $query = Item::with(['recipe.ingredients']);
         
         if ($request->filled('search')) {
-            $query->where('name', 'like', '%' . $request->search . '%');
+            $query->where('name', 'ilike', '%' . $request->search . '%');
         }
         
         if ($request->filled('type')) {
             $query->where('type', $request->type);
-        }
-        
-        if ($request->filled('category')) {
-            $query->where('category', $request->category);
         }
         
         if ($request->filled('min_level')) {
@@ -36,13 +32,11 @@ class ItemController extends Controller
         $items = $query->paginate(20);
         
         $types = Item::distinct()->pluck('type')->filter();
-        $categories = Item::distinct()->pluck('category')->filter();
         
         return Inertia::render('Items/Index', [
             'items' => $items,
-            'filters' => $request->only(['search', 'type', 'category', 'min_level', 'max_level']),
+            'filters' => $request->only(['search', 'type', 'min_level', 'max_level']),
             'types' => $types,
-            'categories' => $categories,
         ]);
     }
     

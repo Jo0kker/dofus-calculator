@@ -31,9 +31,19 @@ class FavoriteController extends Controller
         if ($server) {
             foreach ($favorites as $favorite) {
                 $analysis = $this->analyzeItem($favorite, $server);
-                if ($analysis) {
-                    $favoriteAnalysis[] = $analysis;
-                }
+                $favoriteAnalysis[] = $analysis;
+            }
+        } else {
+            // Si pas de serveur sélectionné, afficher les items sans analyse
+            foreach ($favorites as $favorite) {
+                $favoriteAnalysis[] = [
+                    'item' => $favorite,
+                    'direct_price' => null,
+                    'craft_cost' => null,
+                    'best_option' => 'unavailable',
+                    'savings' => 0,
+                    'craft_tree' => null,
+                ];
             }
         }
         
@@ -49,7 +59,7 @@ class FavoriteController extends Controller
         return back()->with('success', $isFavorite ? 'Ajouté aux favoris' : 'Retiré des favoris');
     }
     
-    private function analyzeItem(Item $item, Server $server): ?array
+    private function analyzeItem(Item $item, Server $server): array
     {
         $analysis = [
             'item' => $item,
@@ -91,7 +101,7 @@ class FavoriteController extends Controller
             $analysis['best_option'] = 'craft';
         }
         
-        return $analysis['best_option'] !== 'unavailable' ? $analysis : null;
+        return $analysis;
     }
     
     private function buildCraftTree(Item $item, Server $server, array $calculated): array

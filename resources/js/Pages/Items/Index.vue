@@ -11,7 +11,7 @@
                 <!-- Search and Filters -->
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6 mb-6">
                     <h3 class="text-lg font-semibold mb-4">Recherche et filtres</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
                             <input 
@@ -33,20 +33,6 @@
                                 <option value="">Tous les types</option>
                                 <option v-for="type in types" :key="type" :value="type">
                                     {{ type }}
-                                </option>
-                            </select>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1">Catégorie</label>
-                            <select 
-                                v-model="filters.category"
-                                @change="applyFilters"
-                                class="w-full border-gray-300 rounded-md shadow-sm"
-                            >
-                                <option value="">Toutes les catégories</option>
-                                <option v-for="category in categories" :key="category" :value="category">
-                                    {{ category }}
                                 </option>
                             </select>
                         </div>
@@ -191,13 +177,11 @@ const props = defineProps({
     items: Object,
     filters: Object,
     types: Array,
-    categories: Array,
 });
 
 const filters = ref({
     search: props.filters?.search || '',
     type: props.filters?.type || '',
-    category: props.filters?.category || '',
     min_level: props.filters?.min_level || '',
     max_level: props.filters?.max_level || '',
 });
