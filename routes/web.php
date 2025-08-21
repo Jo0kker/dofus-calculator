@@ -1,18 +1,23 @@
 <?php
 
 use App\Http\Controllers\CalculatorController;
+use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ItemController;
 use App\Http\Controllers\PriceController;
 use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ServerController;
+use App\Http\Controllers\SitemapController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 
-Route::get('/', function () {
-    return redirect()->route('calculator.index');
-});
+Route::get('/', [HomeController::class, 'index'])->name('home');
+Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+
+// Public routes - accessible without authentication
+Route::get('/items', [ItemController::class, 'index'])->name('items.index');
+Route::get('/items/{item}', [ItemController::class, 'show'])->name('items.show');
 
 Route::middleware([
     'auth:sanctum',
@@ -23,10 +28,6 @@ Route::middleware([
     // Calculator routes
     Route::get('/calculator', [CalculatorController::class, 'index'])->name('calculator.index');
     Route::get('/calculator/recipe/{recipe}', [CalculatorController::class, 'show'])->name('calculator.show');
-    
-    // Items routes
-    Route::get('/items', [ItemController::class, 'index'])->name('items.index');
-    Route::get('/items/{item}', [ItemController::class, 'show'])->name('items.show');
     
     // Price management routes
     Route::post('/prices', [PriceController::class, 'store'])->name('prices.store');
@@ -48,5 +49,3 @@ Route::middleware([
     });
 });
 
-// Public routes that don't require authentication
-Route::get('/items-public', [ItemController::class, 'index'])->name('items.public');

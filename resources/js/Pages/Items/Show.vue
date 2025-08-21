@@ -185,6 +185,14 @@
                                             :recipe="item.recipe"
                                             :direct-price="getDirectPrice()"
                                         />
+                                        
+                                        <!-- Calculateur de ressources -->
+                                        <div class="mt-6">
+                                            <ResourcesCalculator 
+                                                :recipe="item.recipe"
+                                                :item-name="item.name"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
 
@@ -283,6 +291,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import IngredientPricing from '@/Components/IngredientPricing.vue';
 import RecipeCostCalculator from '@/Components/RecipeCostCalculator.vue';
 import PriceHistory from '@/Components/PriceHistory.vue';
+import ResourcesCalculator from '@/Components/ResourcesCalculator.vue';
 
 const props = defineProps({
     item: Object,
