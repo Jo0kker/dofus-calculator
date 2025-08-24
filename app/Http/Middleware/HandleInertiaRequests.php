@@ -31,6 +31,28 @@ class HandleInertiaRequests extends Middleware
      */
     public function share(Request $request): array
     {
+        // Priorité : serveur de l'utilisateur > session > premier serveur actif
+        $selectedServerId = null;
+        
+        if ($request->user() && $request->user()->server_id) {
+            $selectedServerId = $request->user()->server_id;
+            // Synchroniser la session avec le serveur de l'utilisateur
+            session(['selected_server_id' => $selectedServerId]);
+        } elseif (session('selected_server_id')) {
+            $selectedServerId = session('selected_server_id');
+        } else {
+            // Serveur par défaut si aucun n'est sélectionné
+            $defaultServer = Server::where('is_active', true)
+                ->where('is_temporary', false)
+                ->orderBy('display_order')
+                ->orderBy('name')
+                ->first();
+            if ($defaultServer) {
+                $selectedServerId = $defaultServer->id;
+                session(['selected_server_id' => $selectedServerId]);
+            }
+        }
+        
         return [
             ...parent::share($request),
             'ziggy' => fn () => [
@@ -42,7 +64,7 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('display_order')
                 ->orderBy('name')
                 ->get(),
-            'selected_server_id' => session('selected_server_id'),
+            'selected_server_id' => $selectedServerId,
         ];
     }
 }

@@ -13,17 +13,12 @@ export function useServerSelection() {
 
     // Initialiser automatiquement le serveur sélectionné
     const initializeSelectedServer = () => {
+        // Le serveur est maintenant géré côté backend via HandleInertiaRequests
         if (sessionServerId.value) {
             const server = servers.value.find(s => s.id === sessionServerId.value);
             if (server) {
                 selectedServer.value = server;
-                return;
             }
-        }
-
-        // Par défaut, prendre le premier serveur actif
-        if (servers.value.length > 0 && !selectedServer.value) {
-            selectedServer.value = servers.value[0];
         }
     };
 

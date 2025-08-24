@@ -18,9 +18,9 @@ class ServerController extends Controller
         // Stocker en session
         session(['selected_server_id' => $server->id]);
         
-        // Si l'utilisateur est connecté, on peut aussi stocker en base de données
+        // Si l'utilisateur est connecté, sauvegarder dans la base de données
         if (auth()->check()) {
-            auth()->user()->update(['selected_server_id' => $server->id]);
+            auth()->user()->update(['server_id' => $server->id]);
         }
         
         return back();
