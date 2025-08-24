@@ -15,8 +15,8 @@
             </div>
         </div>
 
-        <!-- Formulaire de saisie -->
-        <form @submit.prevent="submitPrice" class="flex items-center space-x-2">
+        <!-- Formulaire de saisie (seulement pour les utilisateurs connectés) -->
+        <form v-if="$page.props.auth && $page.props.auth.user" @submit.prevent="submitPrice" class="flex items-center space-x-2">
             <input 
                 type="number"
                 v-model="quickPriceForm.price"
@@ -34,6 +34,11 @@
                 {{ quickPriceForm.processing ? '...' : (currentPrice ? 'Modifier' : 'Ajouter') }}
             </button>
         </form>
+        
+        <!-- Message pour les utilisateurs non connectés -->
+        <div v-else-if="!currentPrice" class="text-xs text-gray-500 italic">
+            <Link :href="route('login')" class="text-blue-600 hover:underline">Connectez-vous</Link> pour ajouter un prix
+        </div>
 
         <!-- Indication si craftable -->
         <div v-if="ingredient.recipe" class="flex items-center text-xs text-green-600">
@@ -47,7 +52,7 @@
 
 <script setup>
 import { ref, defineEmits, watch, computed } from 'vue';
-import { useForm, router } from '@inertiajs/vue3';
+import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import { useServerSelection } from '@/Composables/useServerSelection';
 
 const props = defineProps({

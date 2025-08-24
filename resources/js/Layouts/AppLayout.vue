@@ -51,13 +51,13 @@ const logout = () => {
 
                             <!-- Navigation Links -->
                             <div class="hidden space-x-8 sm:-my-px sm:ms-10 sm:flex">
-                                <NavLink :href="route('calculator.index')" :active="route().current('calculator.*')">
+                                <NavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('calculator.index')" :active="route().current('calculator.*')">
                                     Calculateur
                                 </NavLink>
                                 <NavLink :href="route('items.index')" :active="route().current('items.*')">
                                     Items
                                 </NavLink>
-                                <NavLink :href="route('favorites.index')" :active="route().current('favorites.*')">
+                                <NavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('favorites.index')" :active="route().current('favorites.*')">
                                     Favoris
                                 </NavLink>
                             </div>
@@ -67,9 +67,9 @@ const logout = () => {
                             <!-- Server Selector -->
                             <ServerSelector />
                             
-                            <div class="ms-3 relative">
+                            <div v-if="$page.props.auth && $page.props.auth.user" class="ms-3 relative">
                                 <!-- Teams Dropdown -->
-                                <Dropdown v-if="$page.props.jetstream.hasTeamFeatures" align="right" width="60">
+                                <Dropdown v-if="$page.props.jetstream && $page.props.jetstream.hasTeamFeatures" align="right" width="60">
                                     <template #trigger>
                                         <span class="inline-flex rounded-md">
                                             <button type="button" class="inline-flex items-center px-3 py-2 border border-transparent text-sm leading-4 font-medium rounded-md text-gray-500 dark:text-gray-400 bg-white dark:bg-gray-800 hover:text-gray-700 dark:hover:text-gray-300 focus:outline-none focus:bg-gray-50 dark:focus:bg-gray-700 active:bg-gray-50 dark:active:bg-gray-700 transition ease-in-out duration-150">
@@ -126,10 +126,10 @@ const logout = () => {
                             </div>
 
                             <!-- Settings Dropdown -->
-                            <div class="ms-3 relative">
+                            <div v-if="$page.props.auth && $page.props.auth.user" class="ms-3 relative">
                                 <Dropdown align="right" width="48">
                                     <template #trigger>
-                                        <button v-if="$page.props.jetstream.managesProfilePhotos" class="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition">
+                                        <button v-if="$page.props.jetstream && $page.props.jetstream.managesProfilePhotos" class="flex text-sm border-2 border-transparent rounded-full focus:outline-none focus:border-gray-300 transition">
                                             <img class="size-8 rounded-full object-cover" :src="$page.props.auth.user.profile_photo_url" :alt="$page.props.auth.user.name">
                                         </button>
 
@@ -169,6 +169,16 @@ const logout = () => {
                                     </template>
                                 </Dropdown>
                             </div>
+                            
+                            <!-- Login/Register Links for guests -->
+                            <div v-if="!$page.props.auth || !$page.props.auth.user" class="flex items-center space-x-2">
+                                <Link :href="route('login')" class="text-sm text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300">
+                                    Connexion
+                                </Link>
+                                <Link :href="route('register')" class="text-sm bg-blue-600 text-white px-3 py-1.5 rounded hover:bg-blue-700">
+                                    Inscription
+                                </Link>
+                            </div>
                         </div>
 
                         <!-- Mobile: Server Selector + Hamburger -->
@@ -207,21 +217,21 @@ const logout = () => {
                 <!-- Responsive Navigation Menu -->
                 <div :class="{'block': showingNavigationDropdown, 'hidden': ! showingNavigationDropdown}" class="sm:hidden">
                     <div class="pt-2 pb-3 space-y-1">
-                        <ResponsiveNavLink :href="route('calculator.index')" :active="route().current('calculator.*')">
+                        <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('calculator.index')" :active="route().current('calculator.*')">
                             Calculateur
                         </ResponsiveNavLink>
                         <ResponsiveNavLink :href="route('items.index')" :active="route().current('items.*')">
                             Items
                         </ResponsiveNavLink>
-                        <ResponsiveNavLink :href="route('favorites.index')" :active="route().current('favorites.*')">
+                        <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('favorites.index')" :active="route().current('favorites.*')">
                             Favoris
                         </ResponsiveNavLink>
                     </div>
 
                     <!-- Responsive Settings Options -->
-                    <div class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
+                    <div v-if="$page.props.auth && $page.props.auth.user" class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
                         <div class="flex items-center px-4">
-                            <div v-if="$page.props.jetstream.managesProfilePhotos" class="shrink-0 me-3">
+                            <div v-if="$page.props.jetstream && $page.props.jetstream.managesProfilePhotos" class="shrink-0 me-3">
                                 <img class="size-10 rounded-full object-cover" :src="$page.props.auth.user.profile_photo_url" :alt="$page.props.auth.user.name">
                             </div>
 
@@ -240,7 +250,7 @@ const logout = () => {
                                 Profile
                             </ResponsiveNavLink>
 
-                            <ResponsiveNavLink v-if="$page.props.jetstream.hasApiFeatures" :href="route('api-tokens.index')" :active="route().current('api-tokens.index')">
+                            <ResponsiveNavLink v-if="$page.props.jetstream && $page.props.jetstream.hasApiFeatures" :href="route('api-tokens.index')" :active="route().current('api-tokens.index')">
                                 API Tokens
                             </ResponsiveNavLink>
 
@@ -252,7 +262,7 @@ const logout = () => {
                             </form>
 
                             <!-- Team Management -->
-                            <template v-if="$page.props.jetstream.hasTeamFeatures">
+                            <template v-if="$page.props.jetstream && $page.props.jetstream.hasTeamFeatures">
                                 <div class="border-t border-gray-200 dark:border-gray-600" />
 
                                 <div class="block px-4 py-2 text-xs text-gray-400">
@@ -290,6 +300,18 @@ const logout = () => {
                                     </template>
                                 </template>
                             </template>
+                        </div>
+                    </div>
+                    
+                    <!-- Login/Register for guests (Mobile) -->
+                    <div v-else class="pt-4 pb-1 border-t border-gray-200 dark:border-gray-600">
+                        <div class="px-3 space-y-1">
+                            <ResponsiveNavLink :href="route('login')">
+                                Connexion
+                            </ResponsiveNavLink>
+                            <ResponsiveNavLink :href="route('register')">
+                                Inscription
+                            </ResponsiveNavLink>
                         </div>
                     </div>
                 </div>

@@ -19,6 +19,9 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap')
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
 Route::get('/items/{item}', [ItemController::class, 'show'])->name('items.show');
 
+// Server selection - accessible without authentication
+Route::post('/server/select', [ServerController::class, 'select'])->name('server.select');
+
 Route::middleware([
     'auth:sanctum',
     config('jetstream.auth_session'),
@@ -37,9 +40,6 @@ Route::middleware([
     // Favorites routes
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     Route::post('/favorites/{item}/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
-    
-    // Server selection
-    Route::post('/server/select', [ServerController::class, 'select'])->name('server.select');
     
     // Moderation routes (for admins/moderators)
     Route::middleware(['can:moderate'])->group(function () {

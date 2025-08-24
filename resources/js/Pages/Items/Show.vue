@@ -47,6 +47,7 @@
                                                 </button>
                                             </div>
                                             <button 
+                                                v-if="$page.props.auth && $page.props.auth.user"
                                                 @click="toggleFavorite"
                                                 :class="[
                                                     'ml-4 p-2 rounded-full transition-colors',
