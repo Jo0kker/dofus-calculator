@@ -3,6 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="description" content="Calculateur de craft pour Dofus - Optimisez vos métiers, calculez les coûts de fabrication et maximisez vos bénéfices sur les différents serveurs.">
 
         <title inertia>{{ config('app.name', 'Laravel') }}</title>
 

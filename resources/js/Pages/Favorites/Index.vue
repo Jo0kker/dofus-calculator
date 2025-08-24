@@ -1,9 +1,12 @@
 <template>
     <AppLayout title="Mes Favoris">
+        <Head>
+            <meta name="description" content="Gérez vos items favoris dans Dofus. Analysez rapidement les coûts de fabrication et la rentabilité de vos recettes préférées." />
+        </Head>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h1 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 Mes Favoris - Analyse des Coûts
-            </h2>
+            </h1>
         </template>
 
         <div class="py-12">
@@ -36,11 +39,11 @@
                                         />
                                     </Link>
                                     <div>
-                                        <h3 class="text-xl font-bold text-gray-900">
+                                        <h2 class="text-xl font-bold text-gray-900">
                                             <Link :href="route('items.show', favorite.item.id)" class="hover:text-blue-600 transition-colors">
                                                 {{ favorite.item.name }}
                                             </Link>
-                                        </h3>
+                                        </h2>
                                         <p v-if="favorite.item.level" class="text-sm text-gray-500">
                                             Niveau {{ favorite.item.level }}
                                         </p>
@@ -90,7 +93,7 @@
 
 <script setup>
 import { ref } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { router, Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 

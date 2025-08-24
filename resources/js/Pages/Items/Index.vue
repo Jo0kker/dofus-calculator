@@ -1,16 +1,19 @@
 <template>
     <AppLayout title="Items">
+        <Head>
+            <meta name="description" content="Base de données complète des items Dofus. Consultez les prix, les recettes et les caractéristiques de tous les objets du jeu." />
+        </Head>
         <template #header>
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+            <h1 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                 Base de données des items
-            </h2>
+            </h1>
         </template>
 
         <div class="py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
                 <!-- Search and Filters -->
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6 mb-6">
-                    <h3 class="text-lg font-semibold mb-4">Recherche et filtres</h3>
+                    <h2 class="text-lg font-semibold mb-4">Recherche et filtres</h2>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
@@ -170,7 +173,7 @@
 <script setup>
 import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
-import { Link } from '@inertiajs/vue3';
+import { Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
 const props = defineProps({

@@ -1,13 +1,16 @@
 <template>
     <AppLayout :title="item.name">
+        <Head>
+            <meta name="description" :content="`Détails de ${item.name} dans Dofus. Prix actuel, recette de craft, ingrédients nécessaires et calcul de rentabilité.`" />
+        </Head>
         <template #header>
             <div class="flex items-center space-x-4">
                 <Link :href="route('items.index')" class="text-gray-400 hover:text-gray-600">
                     ← Retour aux items
                 </Link>
-                <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                <h1 class="font-semibold text-xl text-gray-800 dark:text-gray-200 leading-tight">
                     {{ item.name }}
-                </h2>
+                </h1>
             </div>
         </template>
 
@@ -29,7 +32,7 @@
                                     <div class="flex-1">
                                         <div class="flex items-start justify-between">
                                             <div class="flex items-center gap-2">
-                                                <h3 class="text-2xl font-bold text-gray-900">{{ item.name }}</h3>
+                                                <h2 class="text-2xl font-bold text-gray-900">{{ item.name }}</h2>
                                                 <button 
                                                     @click="copyToClipboard(item.name, 'main')"
                                                     class="p-1.5 rounded hover:bg-gray-100 transition-colors group relative"
@@ -287,7 +290,7 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { router, useForm, usePage } from '@inertiajs/vue3';
-import { Link } from '@inertiajs/vue3';
+import { Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import IngredientPricing from '@/Components/IngredientPricing.vue';
 import RecipeCostCalculator from '@/Components/RecipeCostCalculator.vue';
