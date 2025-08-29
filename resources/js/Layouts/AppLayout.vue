@@ -60,6 +60,9 @@ const logout = () => {
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('favorites.index')" :active="route().current('favorites.*')">
                                     Favoris
                                 </NavLink>
+                                <NavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('moderation.reports')" :active="route().current('moderation.*')">
+                                    🛡️ Modération
+                                </NavLink>
                             </div>
                         </div>
 
@@ -225,6 +228,9 @@ const logout = () => {
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('favorites.index')" :active="route().current('favorites.*')">
                             Favoris
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('moderation.reports')" :active="route().current('moderation.*')">
+                            🛡️ Modération
                         </ResponsiveNavLink>
                     </div>
 

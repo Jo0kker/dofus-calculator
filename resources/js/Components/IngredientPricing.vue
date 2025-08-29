@@ -7,13 +7,33 @@
         <!-- Prix actuel pour le serveur sélectionné -->
         <div v-if="currentPrice" class="bg-white border rounded px-3 py-2">
             <div class="flex justify-between items-center">
-                <span class="text-sm font-medium text-gray-700">Prix actuel:</span>
-                <span class="text-lg font-bold text-blue-600">{{ formatNumber(currentPrice.price) }} K</span>
-            </div>
-            <div class="text-xs text-gray-500">
-                Mis à jour {{ formatDate(currentPrice.updated_at) }}
+                <div>
+                    <span class="text-sm font-medium text-gray-700">Prix actuel:</span>
+                    <div class="text-lg font-bold text-blue-600">{{ formatNumber(currentPrice.price) }} K</div>
+                    <div class="text-xs text-gray-500">
+                        Mis à jour {{ formatDate(currentPrice.updated_at) }}
+                    </div>
+                </div>
+                
+                <!-- Bouton de signalement -->
+                <button 
+                    v-if="$page.props.auth && $page.props.auth.user"
+                    @click="showReportModal = true"
+                    class="text-xs text-red-600 hover:text-red-800 hover:bg-red-50 px-2 py-1 rounded transition-colors"
+                    title="Signaler ce prix comme incorrect"
+                >
+                    🚨 Signaler
+                </button>
             </div>
         </div>
+        
+        <!-- Modal de signalement -->
+        <PriceReportModal 
+            :show="showReportModal"
+            :item-price="currentPriceWithItem"
+            @close="showReportModal = false"
+            @reported="onPriceReported"
+        />
 
         <!-- Formulaire de saisie (seulement pour les utilisateurs connectés) -->
         <form v-if="$page.props.auth && $page.props.auth.user" @submit.prevent="submitPrice" class="flex items-center space-x-2">
@@ -54,6 +74,7 @@
 import { ref, defineEmits, watch, computed } from 'vue';
 import { useForm, router, Link, usePage } from '@inertiajs/vue3';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import PriceReportModal from './PriceReportModal.vue';
 
 const props = defineProps({
     ingredient: Object,
@@ -62,6 +83,8 @@ const props = defineProps({
 const emit = defineEmits(['price-updated']);
 
 const { selectedServer, selectedServerId, isServerSelected } = useServerSelection();
+
+const showReportModal = ref(false);
 
 const quickPriceForm = useForm({
     item_id: props.ingredient.id,
@@ -73,6 +96,15 @@ const quickPriceForm = useForm({
 const currentPrice = computed(() => {
     if (!selectedServerId.value || !props.ingredient.prices) return null;
     return props.ingredient.prices.find(p => p.server.id === selectedServerId.value);
+});
+
+// Créer un objet avec l'item pour le modal
+const currentPriceWithItem = computed(() => {
+    if (!currentPrice.value) return null;
+    return {
+        ...currentPrice.value,
+        item: props.ingredient
+    };
 });
 
 // Mettre à jour le server_id du formulaire
@@ -112,5 +144,10 @@ const formatDate = (date) => {
     if (days < 7) return `il y a ${days} jours`;
     if (days < 30) return `il y a ${Math.floor(days / 7)} semaines`;
     return `il y a ${Math.floor(days / 30)} mois`;
+};
+
+const onPriceReported = () => {
+    // Optionnel: recharger les données ou afficher un message
+    router.reload({ preserveScroll: true });
 };
 </script>

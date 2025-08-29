@@ -33,6 +33,7 @@ class User extends Authenticatable
         'email',
         'password',
         'server_id',
+        'role',
     ];
 
     /**
@@ -99,5 +100,30 @@ class User extends Authenticatable
     public function server(): BelongsTo
     {
         return $this->belongsTo(Server::class);
+    }
+
+    public function priceReports(): HasMany
+    {
+        return $this->hasMany(PriceReport::class, 'reported_by');
+    }
+
+    public function reviewedReports(): HasMany
+    {
+        return $this->hasMany(PriceReport::class, 'reviewed_by');
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isModerator(): bool
+    {
+        return in_array($this->role, ['moderator', 'admin']);
+    }
+
+    public function canModerate(): bool
+    {
+        return $this->isModerator();
     }
 }

@@ -36,7 +36,9 @@ Route::middleware([
     // Price management routes
     Route::post('/prices', [PriceController::class, 'store'])->name('prices.store');
     Route::post('/prices/bulk', [PriceController::class, 'bulkUpdate'])->name('prices.bulk');
-    Route::post('/prices/{itemPrice}/report', [PriceController::class, 'report'])->name('prices.report');
+    
+    // Price reporting routes
+    Route::post('/prices/{itemPrice}/report', [\App\Http\Controllers\PriceReportController::class, 'store'])->name('prices.report');
     
     // Favorites routes
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
@@ -47,6 +49,11 @@ Route::middleware([
         Route::get('/moderation', [ModerationController::class, 'index'])->name('moderation.index');
         Route::post('/moderation/{itemPrice}/approve', [ModerationController::class, 'approve'])->name('moderation.approve');
         Route::post('/moderation/{itemPrice}/reject', [ModerationController::class, 'reject'])->name('moderation.reject');
+        
+        // Price reports moderation
+        Route::get('/moderation/reports', [\App\Http\Controllers\PriceReportController::class, 'index'])->name('moderation.reports');
+        Route::post('/moderation/reports/{report}/approve', [\App\Http\Controllers\PriceReportController::class, 'approve'])->name('moderation.reports.approve');
+        Route::post('/moderation/reports/{report}/dismiss', [\App\Http\Controllers\PriceReportController::class, 'dismiss'])->name('moderation.reports.dismiss');
     });
 });
 

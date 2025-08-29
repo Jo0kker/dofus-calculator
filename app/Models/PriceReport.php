@@ -10,8 +10,16 @@ class PriceReport extends Model
 {
     protected $fillable = [
         'item_price_id',
+        'price_history_id',
         'reported_by',
-        'reason',
+        'comment',
+        'status',
+        'reviewed_by',
+        'reviewed_at',
+    ];
+
+    protected $casts = [
+        'reviewed_at' => 'datetime',
     ];
 
     public function itemPrice(): BelongsTo
@@ -22,5 +30,25 @@ class PriceReport extends Model
     public function reporter(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reported_by');
+    }
+
+    public function reviewer(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function priceHistory(): BelongsTo
+    {
+        return $this->belongsTo(PriceHistory::class);
+    }
+
+    public function getStatusLabelAttribute(): string
+    {
+        return match($this->status) {
+            'pending' => 'En attente',
+            'reviewed' => 'Traité',
+            'dismissed' => 'Rejeté',
+            default => 'Inconnu'
+        };
     }
 }
