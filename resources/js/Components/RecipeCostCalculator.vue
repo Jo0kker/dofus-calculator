@@ -10,8 +10,34 @@
                 </p>
             </div>
 
-            <!-- Résultats du calcul -->
-            <div v-if="calculation" class="space-y-2">
+            <!-- Sélecteur de mode de calcul -->
+            <div v-if="isServerSelected" class="flex space-x-2 mb-3">
+                <button 
+                    @click="calculationMode = 'simple'"
+                    :class="[
+                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        calculationMode === 'simple' 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                    ]"
+                >
+                    Calcul simple
+                </button>
+                <button 
+                    @click="calculationMode = 'recursive'"
+                    :class="[
+                        'flex-1 px-3 py-2 rounded-lg text-sm font-medium transition-colors',
+                        calculationMode === 'recursive' 
+                            ? 'bg-blue-600 text-white' 
+                            : 'bg-white text-gray-700 hover:bg-gray-50 border'
+                    ]"
+                >
+                    Calcul optimisé
+                </button>
+            </div>
+
+            <!-- Résultats du calcul simple -->
+            <div v-if="calculationMode === 'simple' && calculation" class="space-y-2">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <!-- Coût total -->
                     <div class="bg-white rounded-lg p-3 border">
@@ -92,6 +118,87 @@
                 </div>
             </div>
 
+            <!-- Résultats du calcul récursif -->
+            <div v-if="calculationMode === 'recursive' && recursiveCalculation" class="space-y-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- Coût total -->
+                    <div class="bg-white rounded-lg p-3 border">
+                        <div class="text-xs text-gray-600 uppercase tracking-wide">Coût de craft optimisé</div>
+                        <div class="text-xl font-bold" :class="recursiveCalculation.craftCost ? 'text-green-600' : 'text-red-600'">
+                            {{ recursiveCalculation.craftCost ? formatNumber(recursiveCalculation.craftCost) + ' K' : 'Impossible' }}
+                        </div>
+                        <div class="text-xs text-gray-500 mt-1">
+                            Calcul récursif avec optimisation
+                        </div>
+                    </div>
+
+                    <!-- Comparaison avec prix direct -->
+                    <div v-if="recursiveCalculation.directPrice && recursiveCalculation.craftCost" class="bg-white rounded-lg p-3 border">
+                        <div class="text-xs text-gray-600 uppercase tracking-wide">vs Achat direct</div>
+                        <div class="text-xl font-bold" :class="recursiveCalculation.craftCost < recursiveCalculation.directPrice ? 'text-green-600' : 'text-red-600'">
+                            {{ recursiveCalculation.craftCost < recursiveCalculation.directPrice ? '✅ Craft rentable' : '❌ Achat meilleur' }}
+                        </div>
+                        <div class="text-xs text-gray-600">
+                            Économie: {{ formatNumber(Math.abs(recursiveCalculation.directPrice - recursiveCalculation.craftCost)) }} K
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Arbre de craft optimisé -->
+                <div v-if="recursiveCalculation.craftTree" class="bg-white rounded-lg p-3 border">
+                    <h5 class="font-medium text-gray-700 mb-2">Stratégie optimale:</h5>
+                    <div class="space-y-1">
+                        <div 
+                            v-for="ingredient in recursiveCalculation.craftTree.ingredients" 
+                            :key="ingredient.id"
+                            class="text-sm p-1"
+                        >
+                            <div class="flex justify-between items-center">
+                                <span class="flex items-center space-x-2">
+                                    <img 
+                                        v-if="ingredient.image_url"
+                                        :src="ingredient.image_url"
+                                        :alt="ingredient.name"
+                                        class="w-4 h-4"
+                                    />
+                                    <span>{{ ingredient.quantity }}x {{ ingredient.name }}</span>
+                                    <span 
+                                        v-if="ingredient.hasCraft"
+                                        :class="[
+                                            'text-xs px-2 py-0.5 rounded',
+                                            ingredient.usedMethod === 'craft' 
+                                                ? 'bg-blue-100 text-blue-700' 
+                                                : 'bg-green-100 text-green-700'
+                                        ]"
+                                    >
+                                        {{ ingredient.usedMethod === 'craft' ? '🔨 Craft' : '💰 Achat' }}
+                                    </span>
+                                </span>
+                                <span :class="ingredient.usedPrice ? 'text-green-600' : 'text-red-500'">
+                                    {{ ingredient.usedPrice ? formatNumber(ingredient.usedPrice * ingredient.quantity) + ' K' : 'Prix manquant' }}
+                                </span>
+                            </div>
+                            <!-- Sous-ingrédients si craft -->
+                            <div v-if="ingredient.craftTree && ingredient.usedMethod === 'craft'" class="ml-6 mt-1 pl-2 border-l-2 border-gray-200">
+                                <div 
+                                    v-for="subIngredient in ingredient.craftTree.ingredients"
+                                    :key="subIngredient.id"
+                                    class="text-xs text-gray-600 py-0.5"
+                                >
+                                    {{ subIngredient.quantity }}x {{ subIngredient.name }}: 
+                                    {{ subIngredient.usedPrice ? formatNumber(subIngredient.usedPrice * subIngredient.quantity) + ' K' : 'N/A' }}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Loading state -->
+                <div v-if="loadingRecursive" class="text-center py-4">
+                    <p class="text-gray-500 text-sm">Calcul en cours...</p>
+                </div>
+            </div>
+
             <!-- Message d'aide -->
             <div v-if="!selectedServerId" class="text-xs text-gray-500 italic">
                 Sélectionnez un serveur pour calculer les coûts
@@ -103,15 +210,21 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import { router } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const props = defineProps({
     recipe: Object,
     directPrice: Number,
+    itemId: Number,
 });
 
 const { selectedServer, selectedServerId, isServerSelected } = useServerSelection();
 const calculation = ref(null);
+const recursiveCalculation = ref(null);
 const includedIngredients = ref({});
+const calculationMode = ref('recursive');
+const loadingRecursive = ref(false);
 
 // Initialiser les checkboxes pour tous les ingrédients
 const initializeIngredients = () => {
@@ -202,18 +315,56 @@ const toggleAllIngredients = () => {
     calculateCost();
 };
 
+// Fonction pour récupérer le calcul récursif depuis l'API
+const fetchRecursiveCalculation = async () => {
+    if (!selectedServerId.value || !props.itemId) {
+        recursiveCalculation.value = null;
+        return;
+    }
+
+    loadingRecursive.value = true;
+    try {
+        const response = await axios.get(`/items/${props.itemId}/calculate-recursive`, {
+            params: {
+                server_id: selectedServerId.value
+            }
+        });
+        recursiveCalculation.value = response.data;
+    } catch (error) {
+        console.error('Error fetching recursive calculation:', error);
+        recursiveCalculation.value = null;
+    } finally {
+        loadingRecursive.value = false;
+    }
+};
+
 // Initialiser au montage
 onMounted(() => {
     initializeIngredients();
 });
 
 // Calculer automatiquement quand le serveur change
-watch(selectedServerId, calculateCost, { immediate: true });
+watch(selectedServerId, () => {
+    calculateCost();
+    if (calculationMode.value === 'recursive') {
+        fetchRecursiveCalculation();
+    }
+}, { immediate: true });
+
+// Calculer quand le mode change
+watch(calculationMode, (newMode) => {
+    if (newMode === 'recursive' && !recursiveCalculation.value) {
+        fetchRecursiveCalculation();
+    }
+});
 
 // Écouter les changements de prix pour recalculer
 watch(() => props.recipe, () => {
     initializeIngredients();
     calculateCost();
+    if (calculationMode.value === 'recursive') {
+        fetchRecursiveCalculation();
+    }
 }, { deep: true });
 
 const formatNumber = (num) => {

@@ -18,6 +18,7 @@ Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap')
 // Public routes - accessible without authentication
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
 Route::get('/items/{item}', [ItemController::class, 'show'])->name('items.show');
+Route::get('/items/{item}/calculate-recursive', [ItemController::class, 'calculateRecursiveCost'])->name('items.calculate-recursive');
 
 // Server selection - accessible without authentication
 Route::post('/server/select', [ServerController::class, 'select'])->name('server.select');

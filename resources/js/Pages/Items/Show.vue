@@ -188,6 +188,7 @@
                                         <RecipeCostCalculator 
                                             :recipe="item.recipe"
                                             :direct-price="getDirectPrice()"
+                                            :item-id="item.id"
                                         />
                                         
                                         <!-- Calculateur de ressources -->
