@@ -16,11 +16,25 @@ class FavoriteController extends Controller
         
         $favorites = auth()->user()->favoriteItems()
             ->with([
-                'recipe.ingredients.recipe',
+                'recipe.ingredients.recipe.ingredients.prices' => function ($q) use ($serverId) {
+                    if ($serverId) {
+                        $q->where('server_id', $serverId)
+                          ->where('status', 'approved')
+                          ->orderBy('updated_at', 'desc');
+                    }
+                },
+                'recipe.ingredients.prices' => function ($q) use ($serverId) {
+                    if ($serverId) {
+                        $q->where('server_id', $serverId)
+                          ->where('status', 'approved')
+                          ->orderBy('updated_at', 'desc');
+                    }
+                },
                 'prices' => function ($q) use ($serverId) {
                     if ($serverId) {
                         $q->where('server_id', $serverId)
-                          ->where('status', 'approved');
+                          ->where('status', 'approved')
+                          ->orderBy('updated_at', 'desc');
                     }
                 }
             ])
@@ -104,7 +118,7 @@ class FavoriteController extends Controller
         return $analysis;
     }
     
-    private function buildCraftTree(Item $item, Server $server, array $calculated): array
+    private function buildCraftTree(Item $item, Server $server, array &$calculated): array
     {
         if (!$item->recipe) {
             return [];
@@ -126,18 +140,37 @@ class FavoriteController extends Controller
                 $ingredientData['direct_price'] = $directPrice->price;
             }
             
-            if ($ingredient->recipe && isset($calculated[$ingredient->id])) {
-                $ingredientData['craft_cost'] = $calculated[$ingredient->id];
-                $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+            // Vérifier si l'ingrédient a une recette et peut être crafté
+            if ($ingredient->recipe) {
+                // Calculer le coût de craft si pas déjà fait
+                if (!isset($calculated[$ingredient->id])) {
+                    $craftCost = $ingredient->recipe->calculateCost($server, $calculated);
+                    if ($craftCost !== null) {
+                        $calculated[$ingredient->id] = $craftCost;
+                    }
+                }
+                
+                if (isset($calculated[$ingredient->id])) {
+                    $ingredientData['craft_cost'] = $calculated[$ingredient->id];
+                    
+                    // Déterminer quelle méthode est utilisée
+                    if ($ingredientData['direct_price']) {
+                        if ($ingredientData['craft_cost'] < $ingredientData['direct_price']) {
+                            $ingredientData['chosen_method'] = 'craft';
+                            $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+                        } else {
+                            $ingredientData['chosen_method'] = 'buy';
+                        }
+                    } else {
+                        $ingredientData['chosen_method'] = 'craft';
+                        $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+                    }
+                }
             }
             
-            // Déterminer quelle méthode a été choisie
-            if ($ingredientData['direct_price'] && $ingredientData['craft_cost']) {
-                $ingredientData['chosen_method'] = $ingredientData['craft_cost'] < $ingredientData['direct_price'] ? 'craft' : 'buy';
-            } elseif ($ingredientData['direct_price']) {
+            // Si pas de craft possible ou pas choisi, utiliser l'achat direct
+            if ($ingredientData['chosen_method'] === 'unavailable' && $ingredientData['direct_price']) {
                 $ingredientData['chosen_method'] = 'buy';
-            } elseif ($ingredientData['craft_cost']) {
-                $ingredientData['chosen_method'] = 'craft';
             }
             
             $tree[] = $ingredientData;

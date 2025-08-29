@@ -52,6 +52,7 @@ class Item extends Model
         return $this->prices()
             ->where('server_id', $server->id)
             ->where('status', 'approved')
+            ->orderBy('updated_at', 'desc')
             ->first();
     }
 }

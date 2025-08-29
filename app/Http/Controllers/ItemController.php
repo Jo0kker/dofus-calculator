@@ -54,7 +54,8 @@ class ItemController extends Controller
                 if ($selectedServerId) {
                     $query->where('server_id', $selectedServerId);
                 }
-                $query->with('server');
+                $query->orderBy('updated_at', 'desc')
+                    ->with('server');
             },
             'recipe.ingredients.recipe', // Pour savoir si l'ingrédient est craftable
             'prices' => function ($query) use ($selectedServerId) {
@@ -62,7 +63,8 @@ class ItemController extends Controller
                 if ($selectedServerId) {
                     $query->where('server_id', $selectedServerId);
                 }
-                $query->with('server');
+                $query->orderBy('updated_at', 'desc')
+                    ->with('server');
             },
             'priceHistories' => function ($query) use ($selectedServerId) {
                 if ($selectedServerId) {
