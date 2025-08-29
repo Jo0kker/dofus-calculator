@@ -156,38 +156,18 @@ class ItemController extends Controller
                 'quantity' => $quantity,
                 'image_url' => $ingredient->image_url,
                 'directPrice' => $directPrice ? $directPrice->price : null,
+                'hasCraft' => false,
+                'craftCost' => null,
+                'usedPrice' => null,
+                'usedMethod' => 'buy',
+                'craftTree' => null,
             ];
             
-            // Si l'ingrédient a une recette, calculer récursivement
-            if ($ingredient->recipe && !isset($calculated[$ingredient->id])) {
-                $craftCost = $ingredient->recipe->calculateCost($server, $calculated);
-                $ingredientData['craftCost'] = $craftCost;
-                $ingredientData['hasCraft'] = true;
-                
-                // Déterminer quelle option est utilisée
-                if ($craftCost !== null && $directPrice) {
-                    $ingredientData['usedPrice'] = min($craftCost, $directPrice->price);
-                    $ingredientData['usedMethod'] = $craftCost < $directPrice->price ? 'craft' : 'buy';
-                } elseif ($craftCost !== null) {
-                    $ingredientData['usedPrice'] = $craftCost;
-                    $ingredientData['usedMethod'] = 'craft';
-                } else {
-                    $ingredientData['usedPrice'] = $directPrice ? $directPrice->price : null;
-                    $ingredientData['usedMethod'] = 'buy';
-                }
-                
-                // Construire l'arbre récursif si on utilise le craft
-                if ($ingredientData['usedMethod'] === 'craft') {
-                    $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated);
-                }
-            } else {
-                $ingredientData['hasCraft'] = false;
-                $ingredientData['usedPrice'] = $directPrice ? $directPrice->price : null;
-                $ingredientData['usedMethod'] = 'buy';
-            }
+            // Calculer le coût optimal pour cet ingrédient (même logique que Recipe::getIngredientCost)
+            $ingredientCost = $this->getOptimalIngredientCost($ingredient, $server, $calculated, $ingredientData);
             
-            if ($ingredientData['usedPrice'] !== null) {
-                $totalCost += $ingredientData['usedPrice'] * $quantity;
+            if ($ingredientCost !== null) {
+                $totalCost += $ingredientCost * $quantity;
             }
             
             $ingredients[] = $ingredientData;
@@ -197,6 +177,52 @@ class ItemController extends Controller
             'ingredients' => $ingredients,
             'totalCost' => $totalCost,
         ];
+    }
+    
+    private function getOptimalIngredientCost($ingredient, $server, &$calculated, &$ingredientData)
+    {
+        // Si l'ingrédient a une recette, calculer récursivement
+        if ($ingredient->recipe) {
+            $ingredientData['hasCraft'] = true;
+            
+            $craftCost = $ingredient->recipe->calculateCost($server, $calculated);
+            $ingredientData['craftCost'] = $craftCost;
+            
+            // Si on peut le crafter, comparer avec le prix direct
+            if ($craftCost !== null) {
+                $directPrice = $ingredient->getPriceForServer($server);
+                
+                // Prendre le moins cher entre craft et achat direct (même logique que Recipe::getIngredientCost)
+                if ($directPrice) {
+                    $optimalCost = min($craftCost, $directPrice->price);
+                    if ($craftCost < $directPrice->price) {
+                        $ingredientData['usedMethod'] = 'craft';
+                        $ingredientData['usedPrice'] = $craftCost;
+                        $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+                    } else {
+                        $ingredientData['usedMethod'] = 'buy';
+                        $ingredientData['usedPrice'] = $directPrice->price;
+                    }
+                    return $optimalCost;
+                } else {
+                    // Pas de prix direct, forcer le craft
+                    $ingredientData['usedMethod'] = 'craft';
+                    $ingredientData['usedPrice'] = $craftCost;
+                    $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+                    return $craftCost;
+                }
+            }
+        }
+        
+        // Sinon, utiliser le prix direct
+        $price = $ingredient->getPriceForServer($server);
+        if ($price) {
+            $ingredientData['usedMethod'] = 'buy';
+            $ingredientData['usedPrice'] = $price->price;
+            return $price->price;
+        }
+        
+        return null;
     }
     
     private function determineBestOption($craftCost, $directPrice)

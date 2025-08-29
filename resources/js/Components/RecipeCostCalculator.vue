@@ -125,69 +125,46 @@
             </div>
 
             <!-- Résultats du calcul optimisé -->
-            <div v-if="calculationMode === 'optimized' && optimizedCalculation" class="space-y-2">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <!-- Coût total optimisé -->
-                    <div class="bg-white rounded-lg p-3 border">
-                        <div class="text-xs text-gray-600 uppercase tracking-wide">Coût de craft optimisé</div>
-                        <div class="text-xl font-bold" :class="optimizedCalculation.totalCost ? 'text-green-600' : 'text-red-600'">
-                            {{ optimizedCalculation.totalCost ? formatNumber(optimizedCalculation.totalCost) + ' K' : 'Impossible' }}
-                        </div>
-                        <div class="text-xs text-gray-500 mt-1">
-                            Auto-sélection craft/achat
-                        </div>
-                    </div>
-
-                    <!-- Comparaison avec prix direct -->
-                    <div v-if="directPrice && optimizedCalculation.totalCost" class="bg-white rounded-lg p-3 border">
-                        <div class="text-xs text-gray-600 uppercase tracking-wide">vs Achat direct</div>
-                        <div class="text-xl font-bold" :class="optimizedCalculation.totalCost < directPrice ? 'text-green-600' : 'text-red-600'">
-                            {{ optimizedCalculation.totalCost < directPrice ? '✅ Craft rentable' : '❌ Achat meilleur' }}
-                        </div>
-                        <div class="text-xs text-gray-600">
-                            Économie: {{ formatNumber(Math.abs(directPrice - optimizedCalculation.totalCost)) }} K
-                        </div>
-                    </div>
+            <div v-if="calculationMode === 'optimized'" class="space-y-2">
+                <!-- Loading state -->
+                <div v-if="loadingOptimized" class="text-center py-4">
+                    <p class="text-gray-500 text-sm">Calcul en cours...</p>
                 </div>
+                
+                <div v-else-if="optimizedCalculation">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <!-- Coût total optimisé -->
+                        <div class="bg-white rounded-lg p-3 border">
+                            <div class="text-xs text-gray-600 uppercase tracking-wide">Coût de craft optimisé</div>
+                            <div class="text-xl font-bold" :class="optimizedCalculation.craftCost ? 'text-green-600' : 'text-red-600'">
+                                {{ optimizedCalculation.craftCost ? formatNumber(optimizedCalculation.craftCost) + ' K' : 'Impossible' }}
+                            </div>
+                            <div class="text-xs text-gray-500 mt-1">
+                                Calcul récursif avec optimisation
+                            </div>
+                        </div>
 
-                <!-- Détail optimisé par ingrédient -->
-                <div class="bg-white rounded-lg p-3 border">
-                    <h5 class="font-medium text-gray-700 mb-2">Stratégie optimale:</h5>
-                    <div class="space-y-1">
-                        <div 
-                            v-for="detail in optimizedCalculation.details" 
-                            :key="detail.ingredient.id"
-                            class="flex items-center justify-between text-sm p-1 hover:bg-gray-50 rounded"
-                        >
-                            <span class="flex items-center space-x-2">
-                                <img 
-                                    v-if="detail.ingredient.image_url"
-                                    :src="detail.ingredient.image_url"
-                                    :alt="detail.ingredient.name"
-                                    class="w-4 h-4"
-                                />
-                                <span>{{ detail.quantity }}x {{ detail.ingredient.name }}</span>
-                                <span 
-                                    v-if="detail.hasCraft"
-                                    :class="[
-                                        'text-xs px-2 py-0.5 rounded',
-                                        detail.method === 'craft' 
-                                            ? 'bg-blue-100 text-blue-700' 
-                                            : 'bg-green-100 text-green-700'
-                                    ]"
-                                >
-                                    {{ detail.method === 'craft' ? '🔨 Craft' : '💰 Achat' }}
-                                </span>
-                            </span>
-                            <span :class="detail.cost !== null ? 'text-green-600' : 'text-red-500'">
-                                {{ detail.cost !== null ? formatNumber(detail.cost) + ' K' : 'Prix manquant' }}
-                            </span>
+                        <!-- Comparaison avec prix direct -->
+                        <div v-if="optimizedCalculation.directPrice && optimizedCalculation.craftCost" class="bg-white rounded-lg p-3 border">
+                            <div class="text-xs text-gray-600 uppercase tracking-wide">vs Achat direct</div>
+                            <div class="text-xl font-bold" :class="optimizedCalculation.craftCost < optimizedCalculation.directPrice ? 'text-green-600' : 'text-red-600'">
+                                {{ optimizedCalculation.craftCost < optimizedCalculation.directPrice ? '✅ Craft rentable' : '❌ Achat meilleur' }}
+                            </div>
+                            <div class="text-xs text-gray-600">
+                                Économie: {{ formatNumber(Math.abs(optimizedCalculation.directPrice - optimizedCalculation.craftCost)) }} K
+                            </div>
                         </div>
                     </div>
-                    <div v-if="optimizedCalculation.hasSubCrafts" class="mt-2 pt-2 border-t">
-                        <p class="text-xs text-gray-600 italic">
-                            ℹ️ Certains ingrédients sont craftés pour optimiser le coût
-                        </p>
+
+                    <!-- Arbre de craft détaillé -->
+                    <div v-if="optimizedCalculation.craftTree" class="bg-white rounded-lg p-3 border">
+                        <h5 class="font-medium text-gray-700 mb-2">Arbre de craft optimisé:</h5>
+                        <CraftTreeNode 
+                            v-for="ingredient in optimizedCalculation.craftTree.ingredients" 
+                            :key="ingredient.id"
+                            :node="ingredient"
+                            :depth="0"
+                        />
                     </div>
                 </div>
             </div>
@@ -203,10 +180,13 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import axios from 'axios';
+import CraftTreeNode from './CraftTreeNode.vue';
 
 const props = defineProps({
     recipe: Object,
     directPrice: Number,
+    itemId: Number,
 });
 
 const { selectedServer, selectedServerId, isServerSelected } = useServerSelection();
@@ -214,6 +194,7 @@ const calculation = ref(null);
 const optimizedCalculation = ref(null);
 const includedIngredients = ref({});
 const calculationMode = ref('optimized');
+const loadingOptimized = ref(false);
 
 // Initialiser les checkboxes pour tous les ingrédients
 const initializeIngredients = () => {
@@ -279,86 +260,27 @@ const calculateCost = () => {
     };
 };
 
-// Fonction pour calculer le coût optimisé
-const calculateOptimized = () => {
-    if (!selectedServerId.value || !props.recipe) {
+// Fonction pour calculer le coût optimisé via l'API
+const calculateOptimized = async () => {
+    if (!selectedServerId.value || !props.itemId) {
         optimizedCalculation.value = null;
         return;
     }
 
-    const details = [];
-    let totalCost = 0;
-    let canCraft = true;
-    let hasSubCrafts = false;
-
-    // Pour chaque ingrédient
-    props.recipe.ingredients.forEach(ingredient => {
-        const quantity = ingredient.pivot.quantity;
-        const directPrice = ingredient.prices.find(p => p.server.id == selectedServerId.value);
-        
-        let method = 'buy';
-        let cost = null;
-        let hasCraft = false;
-        
-        // Vérifier si l'ingrédient a une recette
-        if (ingredient.recipe && ingredient.recipe.ingredients) {
-            hasCraft = true;
-            // Calculer le coût de craft de cet ingrédient
-            let craftCost = 0;
-            let canCraftIngredient = true;
-            
-            ingredient.recipe.ingredients.forEach(subIng => {
-                const subPrice = subIng.prices?.find(p => p.server?.id == selectedServerId.value);
-                if (subPrice) {
-                    craftCost += subPrice.price * subIng.pivot.quantity;
-                } else {
-                    canCraftIngredient = false;
-                }
-            });
-            
-            // Comparer craft vs achat
-            if (canCraftIngredient && directPrice) {
-                if (craftCost < directPrice.price) {
-                    method = 'craft';
-                    cost = craftCost * quantity;
-                    hasSubCrafts = true;
-                } else {
-                    cost = directPrice.price * quantity;
-                }
-            } else if (canCraftIngredient) {
-                method = 'craft';
-                cost = craftCost * quantity;
-                hasSubCrafts = true;
-            } else if (directPrice) {
-                cost = directPrice.price * quantity;
+    loadingOptimized.value = true;
+    try {
+        const response = await axios.get(`/items/${props.itemId}/calculate-recursive`, {
+            params: {
+                server_id: selectedServerId.value
             }
-        } else if (directPrice) {
-            // Pas de recette, utiliser le prix direct
-            cost = directPrice.price * quantity;
-        }
-        
-        if (cost !== null) {
-            totalCost += cost;
-        } else {
-            canCraft = false;
-        }
-        
-        details.push({
-            ingredient,
-            quantity,
-            method,
-            cost,
-            hasCraft,
-            unitPrice: directPrice ? directPrice.price : null
         });
-    });
-
-    optimizedCalculation.value = {
-        totalCost: canCraft ? totalCost : null,
-        canCraft,
-        details,
-        hasSubCrafts
-    };
+        optimizedCalculation.value = response.data;
+    } catch (error) {
+        console.error('Error fetching optimized calculation:', error);
+        optimizedCalculation.value = null;
+    } finally {
+        loadingOptimized.value = false;
+    }
 };
 
 // Computed pour vérifier si tous les ingrédients sont inclus
@@ -392,30 +314,30 @@ onMounted(() => {
 });
 
 // Calculer automatiquement quand le serveur change
-watch(selectedServerId, () => {
+watch(selectedServerId, async () => {
     if (calculationMode.value === 'manual') {
         calculateCost();
     } else {
-        calculateOptimized();
+        await calculateOptimized();
     }
 }, { immediate: true });
 
 // Calculer quand le mode change
-watch(calculationMode, (newMode) => {
+watch(calculationMode, async (newMode) => {
     if (newMode === 'manual') {
         calculateCost();
     } else {
-        calculateOptimized();
+        await calculateOptimized();
     }
 });
 
 // Écouter les changements de prix pour recalculer
-watch(() => props.recipe, () => {
+watch(() => props.recipe, async () => {
     initializeIngredients();
     if (calculationMode.value === 'manual') {
         calculateCost();
     } else {
-        calculateOptimized();
+        await calculateOptimized();
     }
 }, { deep: true });
 
