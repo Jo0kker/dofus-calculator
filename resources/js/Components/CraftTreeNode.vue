@@ -17,8 +17,17 @@
                     <img v-if="node.image_url" :src="node.image_url" :alt="node.name" class="w-4 h-4" />
                     <span class="font-bold">{{ node.quantity }}x {{ node.name }}</span>
                     <span class="bg-blue-100 text-blue-800 px-2 py-0.5 text-xs rounded">🔨 CRAFT</span>
+                    <!-- Économie réalisée -->
+                    <span v-if="node.directPrice && node.craftCost" class="bg-green-100 text-green-700 px-2 py-0.5 text-xs rounded font-medium">
+                        💰 -{{ formatNumber((node.directPrice - node.craftCost) * node.quantity) }}K
+                    </span>
                 </div>
-                <span class="font-bold text-blue-600">{{ formatNumber(node.usedPrice * node.quantity) }}K</span>
+                <div class="text-right">
+                    <div class="font-bold text-blue-600">{{ formatNumber(node.usedPrice * node.quantity) }}K</div>
+                    <div v-if="node.directPrice" class="text-xs text-gray-500 line-through">
+                        {{ formatNumber(node.directPrice * node.quantity) }}K
+                    </div>
+                </div>
             </div>
             
             <!-- DÉTAIL DU CRAFT -->
