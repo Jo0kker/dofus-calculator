@@ -8,6 +8,7 @@ use App\Http\Controllers\ModerationController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\ApiTokenController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -43,17 +44,25 @@ Route::middleware([
     // Favorites routes
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     Route::post('/favorites/{item}/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
+
+    // API Token routes
+    Route::get('/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
+    Route::post('/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
+    Route::delete('/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
     
     // Moderation routes (for admins/moderators)
     Route::middleware(['can:moderate'])->group(function () {
         Route::get('/moderation', [ModerationController::class, 'index'])->name('moderation.index');
         Route::post('/moderation/{itemPrice}/approve', [ModerationController::class, 'approve'])->name('moderation.approve');
         Route::post('/moderation/{itemPrice}/reject', [ModerationController::class, 'reject'])->name('moderation.reject');
-        
+
         // Price reports moderation
         Route::get('/moderation/reports', [\App\Http\Controllers\PriceReportController::class, 'index'])->name('moderation.reports');
         Route::post('/moderation/reports/{report}/approve', [\App\Http\Controllers\PriceReportController::class, 'approve'])->name('moderation.reports.approve');
         Route::post('/moderation/reports/{report}/dismiss', [\App\Http\Controllers\PriceReportController::class, 'dismiss'])->name('moderation.reports.dismiss');
+
+        // API Monitoring
+        Route::get('/admin/api-monitoring', [\App\Http\Controllers\Admin\ApiMonitoringController::class, 'index'])->name('admin.api-monitoring');
     });
 });
 

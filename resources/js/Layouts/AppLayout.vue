@@ -63,6 +63,9 @@ const logout = () => {
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('moderation.reports')" :active="route().current('moderation.*')">
                                     🛡️ Modération
                                 </NavLink>
+                                <NavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('admin.api-monitoring')" :active="route().current('admin.api-monitoring')">
+                                    📊 API Monitoring
+                                </NavLink>
                             </div>
                         </div>
 
@@ -157,7 +160,7 @@ const logout = () => {
                                             Profile
                                         </DropdownLink>
 
-                                        <DropdownLink v-if="$page.props.jetstream.hasApiFeatures" :href="route('api-tokens.index')">
+                                        <DropdownLink :href="route('api-tokens.index')">
                                             API Tokens
                                         </DropdownLink>
 
@@ -231,6 +234,9 @@ const logout = () => {
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('moderation.reports')" :active="route().current('moderation.*')">
                             🛡️ Modération
+                        </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('admin.api-monitoring')" :active="route().current('admin.api-monitoring')">
+                            📊 API Monitoring
                         </ResponsiveNavLink>
                     </div>
 

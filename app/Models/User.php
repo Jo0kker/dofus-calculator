@@ -107,6 +107,11 @@ class User extends Authenticatable
         return $this->hasMany(PriceReport::class, 'reported_by');
     }
 
+    public function apiLogs(): HasMany
+    {
+        return $this->hasMany(ApiLog::class);
+    }
+
     public function reviewedReports(): HasMany
     {
         return $this->hasMany(PriceReport::class, 'reviewed_by');
