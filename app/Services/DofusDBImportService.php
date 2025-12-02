@@ -237,72 +237,108 @@ class DofusDBImportService
         return $this->importItems(array_unique($itemIds));
     }
 
-    public function importRecipesFirst(int $maxRecipes = 1000): array
+    public function importRecipesFirst(int $maxRecipes = 1000, int $chunkSize = 100, ?callable $progressCallback = null): array
     {
         $imported = 0;
         $updated = 0;
         $errors = [];
-        
+        $errorCount = 0;
+        $maxErrorsStored = 50; // Limiter les erreurs en mémoire
+
         try {
             // Paginer les recettes comme pour les items
             $skip = 0;
             $limit = 50; // Limite max de l'API
             $totalProcessed = 0;
-            
+            $chunkProcessed = 0;
+
             while ($totalProcessed < $maxRecipes) {
                 $response = $this->getHttpClient()->get(self::API_BASE_URL . '/recipes', [
                     '$limit' => $limit,
                     '$skip' => $skip,
                 ]);
-                
+
                 if (!$response->successful()) {
                     $errors[] = "Failed to fetch recipes at skip $skip";
                     break;
                 }
-                
+
                 $recipes = $response->json('data', []);
                 if (empty($recipes)) {
                     // Plus de recettes à importer
                     break;
                 }
-                
+
                 foreach ($recipes as $recipeData) {
                     try {
                         $this->processRecipeFromAPI($recipeData, $imported, $updated);
                         $totalProcessed++;
-                        
-                        // Afficher la progression tous les 50 recettes
-                        if ($totalProcessed % 50 === 0) {
-                            echo "Processed $totalProcessed recipes...\n";
+                        $chunkProcessed++;
+
+                        // Nettoyer la mémoire après chaque chunk
+                        if ($chunkProcessed >= $chunkSize) {
+                            $this->clearMemory();
+                            $chunkProcessed = 0;
+
+                            // Callback de progression
+                            if ($progressCallback) {
+                                $memoryUsage = round(memory_get_usage(true) / 1024 / 1024, 2);
+                                $progressCallback($totalProcessed, $memoryUsage);
+                            }
                         }
-                        
+
                         if ($totalProcessed >= $maxRecipes) {
                             break 2; // Sortir des deux boucles
                         }
                     } catch (\Exception $e) {
-                        $errors[] = "Recipe {$recipeData['_id']}: " . $e->getMessage();
+                        $errorCount++;
+                        // Limiter le nombre d'erreurs stockées en mémoire
+                        if (count($errors) < $maxErrorsStored) {
+                            $errors[] = "Recipe {$recipeData['_id']}: " . $e->getMessage();
+                        }
                         Log::error('Failed to import recipe', [
                             'recipe_id' => $recipeData['_id'] ?? 'unknown',
                             'error' => $e->getMessage(),
                         ]);
                     }
                 }
-                
+
+                // Libérer les données de la réponse
+                unset($recipes, $response);
+
                 $skip += $limit;
-                
+
                 // Pause pour éviter de surcharger l'API
                 usleep(500000); // 0.5 secondes
             }
+
+            // Ajouter un message si des erreurs ont été tronquées
+            if ($errorCount > $maxErrorsStored) {
+                $errors[] = "... and " . ($errorCount - $maxErrorsStored) . " more errors (check logs for details)";
+            }
+
         } catch (\Exception $e) {
             Log::error('DofusDB recipe import failed', ['error' => $e->getMessage()]);
             $errors[] = 'Import recettes: ' . $e->getMessage();
         }
+
+        // Nettoyage final
+        $this->clearMemory();
 
         return [
             'imported' => $imported,
             'updated' => $updated,
             'errors' => $errors,
         ];
+    }
+
+    /**
+     * Libère la mémoire en forçant le garbage collection
+     */
+    private function clearMemory(): void
+    {
+        // Forcer le garbage collector à libérer les cycles de référence
+        gc_collect_cycles();
     }
 
     public function importRecipes(array $recipeIds = [], bool $importDependencies = true): array
@@ -532,27 +568,40 @@ class DofusDBImportService
 
     /**
      * Récupérer les détails complets des items par leurs IDs
+     * Traite par batch pour limiter l'utilisation mémoire
      */
     private function fetchItemDetails(array $itemIds): void
     {
-        foreach ($itemIds as $itemId) {
-            try {
-                $response = $this->getHttpClient()->get(self::API_BASE_URL . "/items/{$itemId}");
-                
-                if ($response->successful()) {
-                    $itemData = $response->json();
-                    $this->updateItemFromAPI($itemData);
+        // Limiter le nombre d'items à récupérer par appel
+        $batchSize = 10;
+        $batches = array_chunk($itemIds, $batchSize);
+
+        foreach ($batches as $batchIds) {
+            foreach ($batchIds as $itemId) {
+                try {
+                    $response = $this->getHttpClient()->get(self::API_BASE_URL . "/items/{$itemId}");
+
+                    if ($response->successful()) {
+                        $itemData = $response->json();
+                        $this->updateItemFromAPI($itemData);
+                        unset($itemData);
+                    }
+
+                    unset($response);
+
+                    // Petite pause pour ne pas surcharger l'API
+                    usleep(100000); // 0.1 secondes
+
+                } catch (\Exception $e) {
+                    Log::warning('Failed to fetch item details', [
+                        'item_id' => $itemId,
+                        'error' => $e->getMessage(),
+                    ]);
                 }
-                
-                // Petite pause pour ne pas surcharger l'API
-                usleep(100000); // 0.1 secondes
-                
-            } catch (\Exception $e) {
-                Log::warning('Failed to fetch item details', [
-                    'item_id' => $itemId,
-                    'error' => $e->getMessage(),
-                ]);
             }
+
+            // Libérer la mémoire après chaque batch
+            gc_collect_cycles();
         }
     }
     
