@@ -279,3 +279,241 @@ it('respects per_page parameter', function () {
         ->assertJsonPath('meta.per_page', 2)
         ->assertJsonPath('meta.total', 5);
 });
+
+it('returns items without prices when min_days_since_update is provided', function () {
+    // Create items - one with price, one without
+    $itemWithPrice = Item::create([
+        'name' => 'Item With Price',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    $itemWithoutPrice = Item::create([
+        'name' => 'Item Without Price',
+        'dofusdb_id' => 2,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 2,
+    ]);
+
+    // Create approved price for one item, updated recently
+    Carbon::setTestNow('2024-01-10 12:00:00');
+    ItemPrice::create([
+        'item_id' => $itemWithPrice->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    // Set current time to check min_days_since_update
+    Carbon::setTestNow('2024-01-15 12:00:00');
+
+    // With min_days_since_update=7, we should get:
+    // - itemWithoutPrice (never had a price)
+    // But NOT itemWithPrice (updated 5 days ago, which is within 7 days)
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=7');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Item Without Price')
+        ->assertJsonPath('data.0.price_updated_at', null);
+});
+
+it('returns items with old prices when min_days_since_update is provided', function () {
+    // Create items with different update times
+    $oldItem = Item::create([
+        'name' => 'Old Price Item',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    $recentItem = Item::create([
+        'name' => 'Recent Price Item',
+        'dofusdb_id' => 2,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 2,
+    ]);
+
+    // Create old price (more than 7 days ago)
+    Carbon::setTestNow('2024-01-01 12:00:00');
+    ItemPrice::create([
+        'item_id' => $oldItem->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    // Create recent price (within 7 days)
+    Carbon::setTestNow('2024-01-10 12:00:00');
+    ItemPrice::create([
+        'item_id' => $recentItem->id,
+        'server_id' => $this->server->id,
+        'price' => 200,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    // Set current time
+    Carbon::setTestNow('2024-01-15 12:00:00');
+
+    // With min_days_since_update=7, we should get only oldItem (updated 14 days ago)
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=7');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Old Price Item');
+});
+
+it('returns both items without prices and items with old prices when min_days_since_update is provided', function () {
+    // Create items
+    $itemWithoutPrice = Item::create([
+        'name' => 'No Price Item',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    $itemOldPrice = Item::create([
+        'name' => 'Old Price Item',
+        'dofusdb_id' => 2,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 2,
+    ]);
+
+    $itemRecentPrice = Item::create([
+        'name' => 'Recent Price Item',
+        'dofusdb_id' => 3,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 3,
+    ]);
+
+    // Create old price (more than 7 days ago)
+    Carbon::setTestNow('2024-01-01 12:00:00');
+    ItemPrice::create([
+        'item_id' => $itemOldPrice->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    // Create recent price (within 7 days)
+    Carbon::setTestNow('2024-01-12 12:00:00');
+    ItemPrice::create([
+        'item_id' => $itemRecentPrice->id,
+        'server_id' => $this->server->id,
+        'price' => 200,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    // Set current time
+    Carbon::setTestNow('2024-01-15 12:00:00');
+
+    // With min_days_since_update=7, we should get:
+    // - itemWithoutPrice (no price, so NULL)
+    // - itemOldPrice (updated 14 days ago)
+    // But NOT itemRecentPrice (updated 3 days ago)
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=7&order=asc');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(2, 'data');
+
+    // Extract item names from response
+    $responseData = $response->json('data');
+    $itemNames = array_column($responseData, 'name');
+
+    expect($itemNames)->toContain('No Price Item');
+    expect($itemNames)->toContain('Old Price Item');
+    expect($itemNames)->not->toContain('Recent Price Item');
+});
+
+it('excludes items updated within min_days_since_update days', function () {
+    // Create an item with a recent update
+    $recentItem = Item::create([
+        'name' => 'Recent Item',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    // Create price updated 3 days ago
+    Carbon::setTestNow('2024-01-12 12:00:00');
+    ItemPrice::create([
+        'item_id' => $recentItem->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    Carbon::setTestNow('2024-01-15 12:00:00');
+
+    // With min_days_since_update=7, this item should NOT be returned (updated 3 days ago)
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=7');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(0, 'data');
+});
+
+it('validates min_days_since_update is a non-negative integer', function () {
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=-1');
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['min_days_since_update']);
+});
+
+it('validates min_days_since_update must be an integer', function () {
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=abc');
+
+    $response->assertStatus(422)
+        ->assertJsonValidationErrors(['min_days_since_update']);
+});
+
+it('returns items with min_days_since_update of 0 that have never been updated', function () {
+    // Create an item without price
+    $itemWithoutPrice = Item::create([
+        'name' => 'Item Without Price',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    // Create an item with price updated today
+    $itemWithPrice = Item::create([
+        'name' => 'Item With Price',
+        'dofusdb_id' => 2,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 2,
+    ]);
+
+    Carbon::setTestNow('2024-01-15 12:00:00');
+    ItemPrice::create([
+        'item_id' => $itemWithPrice->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    // With min_days_since_update=0, only items with NULL price_updated_at OR updated before today
+    // should be returned. Since itemWithPrice was updated today, it should NOT be included.
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=0');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(1, 'data')
+        ->assertJsonPath('data.0.name', 'Item Without Price');
+});
