@@ -444,9 +444,7 @@ class ItemApiController extends Controller
         $serverId = (int) $request->input('server_id');
         $order = $request->input('order', 'desc');
         $perPage = min($request->input('per_page', 20), 100);
-        $minDaysSinceUpdate = $request->has('min_days_since_update')
-            ? (int) $request->input('min_days_since_update')
-            : null;
+        $minDaysSinceUpdate = $request->input('min_days_since_update');
 
         // Handle dynamic includes
         $includes = $this->parseIncludes($request->input('include', ''));
@@ -464,6 +462,7 @@ class ItemApiController extends Controller
                 ->select('items.*', 'item_prices.updated_at as price_updated_at');
 
             // Filter: items with no price (never updated) OR items with price updated before cutoff date
+            // Using startOfDay() for day-based filtering: X days means X full calendar days
             $cutoffDate = now()->subDays($minDaysSinceUpdate)->startOfDay();
             $query->where(function ($q) use ($cutoffDate) {
                 $q->whereNull('item_prices.updated_at')
