@@ -47,7 +47,6 @@ class ItemApiController extends Controller
      * ?dofusdb_id=in:289,290,291&include=prices,recipe&server_id=24   # Multiple filters with prices for server 24
      * ```
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
@@ -75,7 +74,7 @@ class ItemApiController extends Controller
         $query = Item::query();
 
         // Apply includes with optional server filtering for prices
-        if (!empty($includes)) {
+        if (! empty($includes)) {
             $query->with($this->buildWithArray($includes, $serverId));
         }
 
@@ -105,14 +104,14 @@ class ItemApiController extends Controller
                 'per_page' => $items->perPage(),
                 'total' => $items->total(),
                 'server_id' => $serverId,
-                'includes' => $includes
+                'includes' => $includes,
             ],
             'links' => [
                 'first' => $items->url(1),
                 'last' => $items->url($items->lastPage()),
                 'prev' => $items->previousPageUrl(),
                 'next' => $items->nextPageUrl(),
-            ]
+            ],
         ]);
     }
 
@@ -133,7 +132,7 @@ class ItemApiController extends Controller
             'type' => 'string',
             'category' => 'string',
             'level' => 'integer',
-            'dofusdb_id' => 'integer'
+            'dofusdb_id' => 'integer',
         ];
 
         foreach ($filterableFields as $field => $type) {
@@ -167,21 +166,29 @@ class ItemApiController extends Controller
                     $query->where($field, 'like', "%{$filterValue}");
                     break;
                 case 'gt':
-                    if ($type === 'integer') $query->where($field, '>', (int)$filterValue);
+                    if ($type === 'integer') {
+                        $query->where($field, '>', (int) $filterValue);
+                    }
                     break;
                 case 'gte':
-                    if ($type === 'integer') $query->where($field, '>=', (int)$filterValue);
+                    if ($type === 'integer') {
+                        $query->where($field, '>=', (int) $filterValue);
+                    }
                     break;
                 case 'lt':
-                    if ($type === 'integer') $query->where($field, '<', (int)$filterValue);
+                    if ($type === 'integer') {
+                        $query->where($field, '<', (int) $filterValue);
+                    }
                     break;
                 case 'lte':
-                    if ($type === 'integer') $query->where($field, '<=', (int)$filterValue);
+                    if ($type === 'integer') {
+                        $query->where($field, '<=', (int) $filterValue);
+                    }
                     break;
                 case 'between':
                     if ($type === 'integer' && strpos($filterValue, ',') !== false) {
                         [$min, $max] = explode(',', $filterValue);
-                        $query->whereBetween($field, [(int)$min, (int)$max]);
+                        $query->whereBetween($field, [(int) $min, (int) $max]);
                     }
                     break;
                 case 'in':
@@ -195,7 +202,7 @@ class ItemApiController extends Controller
         } else {
             // Default behavior (exact match for integers, like for strings)
             if ($type === 'integer') {
-                $query->where($field, '=', (int)$value);
+                $query->where($field, '=', (int) $value);
             } else {
                 $query->where($field, 'like', "%{$value}%");
             }
@@ -233,8 +240,6 @@ class ItemApiController extends Controller
      * /api/items/123?include=prices,recipe,metadata      # With all available data
      * ```
      *
-     * @param Request $request
-     * @param Item $item
      * @return \Illuminate\Http\JsonResponse
      */
     public function show(Request $request, Item $item)
@@ -246,7 +251,7 @@ class ItemApiController extends Controller
         $includes = $this->parseIncludes($request->input('include', ''));
 
         // Apply includes with optional server filtering for prices
-        if (!empty($includes)) {
+        if (! empty($includes)) {
             $item->load($this->buildWithArray($includes, $serverId));
         }
 
@@ -254,8 +259,8 @@ class ItemApiController extends Controller
             'data' => $this->formatItemResponse($item, $includes, $serverId),
             'meta' => [
                 'server_id' => $serverId,
-                'includes' => $includes
-            ]
+                'includes' => $includes,
+            ],
         ]);
     }
 
@@ -274,7 +279,7 @@ class ItemApiController extends Controller
             'recipe.ingredients',
             'prices',
             'usedInRecipes',
-            'metadata'
+            'metadata',
         ];
 
         // Filter only allowed includes
@@ -291,7 +296,7 @@ class ItemApiController extends Controller
         foreach ($includes as $include) {
             switch ($include) {
                 case 'prices':
-                    $withArray['prices'] = function($q) use ($serverId) {
+                    $withArray['prices'] = function ($q) use ($serverId) {
                         // Only filter by server if one is specified
                         if ($serverId !== null) {
                             $q->where('server_id', $serverId);
@@ -300,13 +305,13 @@ class ItemApiController extends Controller
                     };
                     break;
                 case 'recipe':
-                    $withArray['recipe'] = function($q) {};
+                    $withArray['recipe'] = function ($q) {};
                     break;
                 case 'recipe.ingredients':
-                    $withArray['recipe.ingredients'] = function($q) {};
+                    $withArray['recipe.ingredients'] = function ($q) {};
                     break;
                 case 'usedInRecipes':
-                    $withArray['usedInRecipes'] = function($q) {};
+                    $withArray['usedInRecipes'] = function ($q) {};
                     break;
                 case 'metadata':
                     // Metadata is already loaded with the model, no additional query needed
@@ -341,7 +346,7 @@ class ItemApiController extends Controller
 
         // Add includes dynamically
         if (in_array('prices', $includes) && $item->relationLoaded('prices')) {
-            $response['prices'] = $item->prices->map(function($price) {
+            $response['prices'] = $item->prices->map(function ($price) {
                 return [
                     'id' => $price->id,
                     'server_id' => $price->server_id, // Include server_id when returning multiple servers
@@ -366,7 +371,7 @@ class ItemApiController extends Controller
 
             // Add ingredients if requested
             if (in_array('recipe.ingredients', $includes) && $item->recipe->relationLoaded('ingredients')) {
-                $response['recipe']['ingredients'] = $item->recipe->ingredients->map(function($ingredient) {
+                $response['recipe']['ingredients'] = $item->recipe->ingredients->map(function ($ingredient) {
                     return [
                         'item_id' => $ingredient->id,
                         'name' => $ingredient->name,
@@ -379,7 +384,7 @@ class ItemApiController extends Controller
         }
 
         if (in_array('usedInRecipes', $includes) && $item->relationLoaded('usedInRecipes')) {
-            $response['used_in_recipes'] = $item->usedInRecipes->map(function($recipe) {
+            $response['used_in_recipes'] = $item->usedInRecipes->map(function ($recipe) {
                 return [
                     'recipe_id' => $recipe->id,
                     'item_id' => $recipe->item_id,
@@ -390,5 +395,85 @@ class ItemApiController extends Controller
         }
 
         return $response;
+    }
+
+    /**
+     * Get items ordered by pricing last update for a specific server
+     *
+     * Returns a paginated list of items ordered by when their prices were last updated
+     * for the specified server. Only items with approved prices are included.
+     *
+     * **Required Parameters:**
+     * - `server_id` - Server ID to filter prices by (required)
+     *
+     * **Optional Parameters:**
+     * - `order` - Sort order: 'asc' or 'desc' (default: 'desc' - most recently updated first)
+     * - `per_page` - Results per page (1-100, default: 20)
+     * - `include` - Comma-separated relations to include (prices, recipe, etc.)
+     *
+     * **Examples:**
+     * ```
+     * /api/items/by-price-update?server_id=24                    # Get items ordered by price update (newest first)
+     * /api/items/by-price-update?server_id=24&order=asc          # Oldest updates first
+     * /api/items/by-price-update?server_id=24&include=prices     # Include price data
+     * ```
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function byPriceUpdate(Request $request)
+    {
+        $request->validate([
+            'server_id' => 'required|integer|exists:servers,id',
+            'order' => 'sometimes|string|in:asc,desc',
+            'per_page' => 'sometimes|integer|min:1|max:100',
+            'include' => 'sometimes|string|max:255',
+        ]);
+
+        $serverId = (int) $request->input('server_id');
+        $order = $request->input('order', 'desc');
+        $perPage = min($request->input('per_page', 20), 100);
+
+        // Handle dynamic includes
+        $includes = $this->parseIncludes($request->input('include', ''));
+
+        // Build query joining with item_prices to order by price update time
+        $query = Item::query()
+            ->join('item_prices', 'items.id', '=', 'item_prices.item_id')
+            ->where('item_prices.server_id', $serverId)
+            ->where('item_prices.status', 'approved')
+            ->select('items.*', 'item_prices.updated_at as price_updated_at')
+            ->orderBy('item_prices.updated_at', $order);
+
+        // Apply includes with server filtering for prices
+        if (! empty($includes)) {
+            $query->with($this->buildWithArray($includes, $serverId));
+        }
+
+        // Pagination
+        $items = $query->paginate($perPage);
+
+        return response()->json([
+            'data' => $items->map(function ($item) use ($includes, $serverId) {
+                $response = $this->formatItemResponse($item, $includes, $serverId);
+                $response['price_updated_at'] = $item->price_updated_at;
+
+                return $response;
+            }),
+            'meta' => [
+                'current_page' => $items->currentPage(),
+                'last_page' => $items->lastPage(),
+                'per_page' => $items->perPage(),
+                'total' => $items->total(),
+                'server_id' => $serverId,
+                'order' => $order,
+                'includes' => $includes,
+            ],
+            'links' => [
+                'first' => $items->url(1),
+                'last' => $items->url($items->lastPage()),
+                'prev' => $items->previousPageUrl(),
+                'next' => $items->nextPageUrl(),
+            ],
+        ]);
     }
 }

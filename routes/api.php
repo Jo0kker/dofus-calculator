@@ -12,6 +12,7 @@ Route::middleware(['force.json', 'track.api'])->group(function () {
     Route::get('/servers', [ServerApiController::class, 'index']);
     Route::get('/servers/{server}', [ServerApiController::class, 'show']);
     Route::get('/items', [ItemApiController::class, 'index']);
+    Route::get('/items/by-price-update', [ItemApiController::class, 'byPriceUpdate']);
     Route::get('/items/{item}', [ItemApiController::class, 'show']);
 
     // Authenticated routes
