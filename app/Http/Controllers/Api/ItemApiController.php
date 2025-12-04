@@ -22,7 +22,7 @@ class ItemApiController extends Controller
      * - `dofusdb_id` - Filter by DofusDB ID with operators
      *
      * **Available Operators:**
-     * - String fields: `eq:`, `like:`, `starts:`, `ends:`, `in:`
+     * - String fields: `eq:`, `like:`, `ilike:` (case-insensitive), `starts:`, `ends:`, `in:`
      * - Integer fields: `eq:`, `gt:`, `gte:`, `lt:`, `lte:`, `between:`, `in:`
      *
      * **Include Options (use the `include` parameter to get additional data):**
@@ -158,6 +158,9 @@ class ItemApiController extends Controller
                     break;
                 case 'like':
                     $query->where($field, 'like', "%{$filterValue}%");
+                    break;
+                case 'ilike':
+                    $query->whereRaw("LOWER({$field}) LIKE ?", ['%'.strtolower($filterValue).'%']);
                     break;
                 case 'starts':
                     $query->where($field, 'like', "{$filterValue}%");
