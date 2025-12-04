@@ -469,15 +469,23 @@ class ItemApiController extends Controller
                 $q->whereNull('item_prices.updated_at')
                     ->orWhere('item_prices.updated_at', '<', $cutoffDate);
             });
+
+            // Order by price update time, handling NULL values appropriately
+            // NULL values (never updated) are ordered first when ascending, last when descending
+            if ($order === 'asc') {
+                $query->orderByRaw('item_prices.updated_at IS NULL DESC, item_prices.updated_at ASC');
+            } else {
+                $query->orderByRaw('item_prices.updated_at IS NULL ASC, item_prices.updated_at DESC');
+            }
         } else {
             // Default behavior: INNER JOIN to only return items with approved prices
             $query->join('item_prices', 'items.id', '=', 'item_prices.item_id')
                 ->where('item_prices.server_id', $serverId)
                 ->where('item_prices.status', 'approved')
                 ->select('items.*', 'item_prices.updated_at as price_updated_at');
-        }
 
-        $query->orderBy('item_prices.updated_at', $order);
+            $query->orderBy('item_prices.updated_at', $order);
+        }
 
         // Apply includes with server filtering for prices
         if (! empty($includes)) {

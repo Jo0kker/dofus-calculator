@@ -517,3 +517,83 @@ it('returns items with min_days_since_update of 0 that have never been updated',
         ->assertJsonCount(1, 'data')
         ->assertJsonPath('data.0.name', 'Item Without Price');
 });
+
+it('orders NULL price_updated_at first when order is asc with min_days_since_update', function () {
+    // Create items
+    $itemWithoutPrice = Item::create([
+        'name' => 'No Price Item',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    $itemWithOldPrice = Item::create([
+        'name' => 'Old Price Item',
+        'dofusdb_id' => 2,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 2,
+    ]);
+
+    // Create old price (more than 7 days ago)
+    Carbon::setTestNow('2024-01-01 12:00:00');
+    ItemPrice::create([
+        'item_id' => $itemWithOldPrice->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    Carbon::setTestNow('2024-01-15 12:00:00');
+
+    // With order=asc, NULL values (never updated) should appear first
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=7&order=asc');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.name', 'No Price Item')
+        ->assertJsonPath('data.0.price_updated_at', null)
+        ->assertJsonPath('data.1.name', 'Old Price Item');
+});
+
+it('orders NULL price_updated_at last when order is desc with min_days_since_update', function () {
+    // Create items
+    $itemWithoutPrice = Item::create([
+        'name' => 'No Price Item',
+        'dofusdb_id' => 1,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 1,
+    ]);
+
+    $itemWithOldPrice = Item::create([
+        'name' => 'Old Price Item',
+        'dofusdb_id' => 2,
+        'type' => 'resource',
+        'category' => 'materials',
+        'level' => 2,
+    ]);
+
+    // Create old price (more than 7 days ago)
+    Carbon::setTestNow('2024-01-01 12:00:00');
+    ItemPrice::create([
+        'item_id' => $itemWithOldPrice->id,
+        'server_id' => $this->server->id,
+        'price' => 100,
+        'status' => 'approved',
+        'created_by' => $this->user->id,
+    ]);
+
+    Carbon::setTestNow('2024-01-15 12:00:00');
+
+    // With order=desc, NULL values (never updated) should appear last
+    $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&min_days_since_update=7&order=desc');
+
+    $response->assertStatus(200)
+        ->assertJsonCount(2, 'data')
+        ->assertJsonPath('data.0.name', 'Old Price Item')
+        ->assertJsonPath('data.1.name', 'No Price Item')
+        ->assertJsonPath('data.1.price_updated_at', null);
+});
