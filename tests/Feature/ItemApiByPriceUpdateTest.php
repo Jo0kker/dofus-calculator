@@ -5,6 +5,7 @@ use App\Models\ItemPrice;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 
 uses(RefreshDatabase::class);
 
@@ -27,6 +28,10 @@ beforeEach(function () {
         'type' => 'classic',
         'is_active' => true,
     ]);
+});
+
+afterEach(function () {
+    Carbon::setTestNow();
 });
 
 it('requires server_id parameter', function () {
@@ -61,8 +66,9 @@ it('returns items ordered by price update time descending by default', function 
         'level' => 2,
     ]);
 
-    // Create prices with different update times
-    $price1 = ItemPrice::create([
+    // Create prices with different update times using Carbon time travel
+    Carbon::setTestNow('2024-01-01 10:00:00');
+    ItemPrice::create([
         'item_id' => $item1->id,
         'server_id' => $this->server->id,
         'price' => 100,
@@ -70,16 +76,16 @@ it('returns items ordered by price update time descending by default', function 
         'created_by' => $this->user->id,
     ]);
 
-    // Sleep briefly to ensure different timestamps
-    sleep(1);
-
-    $price2 = ItemPrice::create([
+    Carbon::setTestNow('2024-01-01 11:00:00');
+    ItemPrice::create([
         'item_id' => $item2->id,
         'server_id' => $this->server->id,
         'price' => 200,
         'status' => 'approved',
         'created_by' => $this->user->id,
     ]);
+
+    Carbon::setTestNow();
 
     $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id);
 
@@ -109,8 +115,9 @@ it('returns items ordered by price update time ascending when specified', functi
         'level' => 2,
     ]);
 
-    // Create prices with different update times
-    $price1 = ItemPrice::create([
+    // Create prices with different update times using Carbon time travel
+    Carbon::setTestNow('2024-01-01 10:00:00');
+    ItemPrice::create([
         'item_id' => $item1->id,
         'server_id' => $this->server->id,
         'price' => 100,
@@ -118,15 +125,16 @@ it('returns items ordered by price update time ascending when specified', functi
         'created_by' => $this->user->id,
     ]);
 
-    sleep(1);
-
-    $price2 = ItemPrice::create([
+    Carbon::setTestNow('2024-01-01 11:00:00');
+    ItemPrice::create([
         'item_id' => $item2->id,
         'server_id' => $this->server->id,
         'price' => 200,
         'status' => 'approved',
         'created_by' => $this->user->id,
     ]);
+
+    Carbon::setTestNow();
 
     $response = $this->getJson('/api/items/by-price-update?server_id='.$this->server->id.'&order=asc');
 
