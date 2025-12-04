@@ -22,7 +22,7 @@ class ItemApiController extends Controller
      * - `dofusdb_id` - Filter by DofusDB ID with operators
      *
      * **Available Operators:**
-     * - String fields: `eq:`, `like:`, `starts:`, `ends:`, `in:`
+     * - String fields: `eq:`, `like:`, `ilike:` (case-insensitive), `starts:`, `ends:`, `in:`
      * - Integer fields: `eq:`, `gt:`, `gte:`, `lt:`, `lte:`, `between:`, `in:`
      *
      * **Include Options (use the `include` parameter to get additional data):**
@@ -158,6 +158,9 @@ class ItemApiController extends Controller
                     break;
                 case 'like':
                     $query->where($field, 'like', "%{$filterValue}%");
+                    break;
+                case 'ilike':
+                    $query->whereRaw("LOWER({$field}) LIKE ?", ['%'.strtolower($filterValue).'%']);
                     break;
                 case 'starts':
                     $query->where($field, 'like', "{$filterValue}%");
@@ -401,7 +404,13 @@ class ItemApiController extends Controller
      * Get items ordered by pricing last update for a specific server
      *
      * Returns a paginated list of items ordered by when their prices were last updated
-     * for the specified server. Only items with approved prices are included.
+     * for the specified server.
+     *
+     * When `min_days_since_update` is provided, uses a LEFT JOIN to include items without prices,
+     * filtering to only return items that have never had a price update (price_updated_at NULL)
+     * or whose price has not been updated in the last X days.
+     *
+     * Without `min_days_since_update`, only items with approved prices are returned (default behavior).
      *
      * **Required Parameters:**
      * - `server_id` - Server ID to filter prices by (required)
@@ -410,15 +419,20 @@ class ItemApiController extends Controller
      * - `order` - Sort order: 'asc' or 'desc' (default: 'desc' - most recently updated first)
      * - `per_page` - Results per page (1-100, default: 20)
      * - `include` - Comma-separated relations to include (prices, recipe, etc.)
+     * - `min_days_since_update` - Filter items that have never been updated (price_updated_at NULL)
+     *   or whose price has not been updated in the last X days.
+     *   Items updated within the last X days are excluded from the results.
      *
      * **Examples:**
      * ```
-     * /api/items/by-price-update?server_id=24                    # Get items ordered by price update (newest first)
-     * /api/items/by-price-update?server_id=24&order=asc          # Oldest updates first
-     * /api/items/by-price-update?server_id=24&include=prices     # Include price data
+     * /api/items/by-price-update?server_id=24                                # Get items with prices ordered by update (newest first)
+     * /api/items/by-price-update?server_id=24&order=asc                      # Oldest updates first
+     * /api/items/by-price-update?server_id=24&include=prices                 # Include price data
+     * /api/items/by-price-update?server_id=24&min_days_since_update=7        # Items never updated or not updated in last 7 days
      * ```
      *
-     * @return \Illuminate\Http\JsonResponse
+     * @param  \Illuminate\Http\Request  $request  The incoming HTTP request
+     * @return \Illuminate\Http\JsonResponse JSON response containing paginated items with price update information
      */
     public function byPriceUpdate(Request $request)
     {
@@ -427,22 +441,53 @@ class ItemApiController extends Controller
             'order' => 'sometimes|string|in:asc,desc',
             'per_page' => 'sometimes|integer|min:1|max:100',
             'include' => 'sometimes|string|max:255',
+            'min_days_since_update' => 'sometimes|integer|min:0',
         ]);
 
         $serverId = (int) $request->input('server_id');
         $order = $request->input('order', 'desc');
         $perPage = min($request->input('per_page', 20), 100);
+        $minDaysSinceUpdate = $request->input('min_days_since_update');
 
         // Handle dynamic includes
         $includes = $this->parseIncludes($request->input('include', ''));
 
-        // Build query joining with item_prices to order by price update time
-        $query = Item::query()
-            ->join('item_prices', 'items.id', '=', 'item_prices.item_id')
-            ->where('item_prices.server_id', $serverId)
-            ->where('item_prices.status', 'approved')
-            ->select('items.*', 'item_prices.updated_at as price_updated_at')
-            ->orderBy('item_prices.updated_at', $order);
+        // Build query - use LEFT JOIN when min_days_since_update is provided to include items without prices
+        $query = Item::query();
+
+        if ($minDaysSinceUpdate !== null) {
+            // LEFT JOIN to include items without prices
+            $query->leftJoin('item_prices', function ($join) use ($serverId) {
+                $join->on('items.id', '=', 'item_prices.item_id')
+                    ->where('item_prices.server_id', '=', $serverId)
+                    ->where('item_prices.status', '=', 'approved');
+            })
+                ->select('items.*', 'item_prices.updated_at as price_updated_at');
+
+            // Filter: items with no price (never updated) OR items with price updated before cutoff date
+            // Using startOfDay() for day-based filtering: X days means X full calendar days
+            $cutoffDate = now()->subDays($minDaysSinceUpdate)->startOfDay();
+            $query->where(function ($q) use ($cutoffDate) {
+                $q->whereNull('item_prices.updated_at')
+                    ->orWhere('item_prices.updated_at', '<', $cutoffDate);
+            });
+
+            // Order by price update time, handling NULL values appropriately
+            // NULL values (never updated) are ordered first when ascending, last when descending
+            if ($order === 'asc') {
+                $query->orderByRaw('item_prices.updated_at IS NULL DESC, item_prices.updated_at ASC');
+            } else {
+                $query->orderByRaw('item_prices.updated_at IS NULL ASC, item_prices.updated_at DESC');
+            }
+        } else {
+            // Default behavior: INNER JOIN to only return items with approved prices
+            $query->join('item_prices', 'items.id', '=', 'item_prices.item_id')
+                ->where('item_prices.server_id', $serverId)
+                ->where('item_prices.status', 'approved')
+                ->select('items.*', 'item_prices.updated_at as price_updated_at');
+
+            $query->orderBy('item_prices.updated_at', $order);
+        }
 
         // Apply includes with server filtering for prices
         if (! empty($includes)) {
