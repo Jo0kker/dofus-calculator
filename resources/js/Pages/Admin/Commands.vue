@@ -10,8 +10,10 @@ const props = defineProps({
 const status = ref(props.importStatus ?? { status: 'idle', started_at: null, progress: null, last_result: null });
 const isSubmitting = ref(false);
 const pollErrorCount = ref(0);
+const completionMessage = ref(null);
 const maxPollErrors = 5;
 let pollInterval = null;
+let wasRunning = false;
 
 const isRunning = () => status.value?.status === 'running';
 
@@ -20,10 +22,12 @@ const startImport = () => {
 
     isSubmitting.value = true;
     pollErrorCount.value = 0;
+    completionMessage.value = null;
     router.post(route('admin.commands.import-recipes'), {}, {
         preserveScroll: true,
         onFinish: () => {
             isSubmitting.value = false;
+            wasRunning = true;
             startPolling();
         },
     });
@@ -32,17 +36,35 @@ const startImport = () => {
 const fetchStatus = async () => {
     try {
         const response = await fetch(route('admin.commands.import-recipes.status'));
-        if (response.ok) {
-            status.value = await response.json();
-            pollErrorCount.value = 0;
-
-            if (status.value.status !== 'running') {
-                stopPolling();
-            }
-        } else {
+        if (!response.ok) {
             pollErrorCount.value++;
             if (pollErrorCount.value >= maxPollErrors) {
                 stopPolling();
+            }
+            return;
+        }
+
+        let data;
+        try {
+            data = await response.json();
+        } catch (parseError) {
+            pollErrorCount.value++;
+            if (pollErrorCount.value >= maxPollErrors) {
+                stopPolling();
+            }
+            return;
+        }
+
+        status.value = data;
+        pollErrorCount.value = 0;
+
+        if (status.value.status !== 'running') {
+            stopPolling();
+            if (wasRunning) {
+                wasRunning = false;
+                completionMessage.value = status.value.status === 'completed'
+                    ? 'Import terminé avec succès !'
+                    : 'Import échoué. Consultez les logs pour plus de détails.';
             }
         }
     } catch (e) {
@@ -128,6 +150,11 @@ onUnmounted(() => {
                     <p class="text-red-800 dark:text-red-200">{{ $page.props.flash.error }}</p>
                 </div>
 
+                <!-- Completion notification -->
+                <div v-if="completionMessage" aria-live="polite" class="mb-4 p-4 border rounded-lg" :class="status.status === 'completed' ? 'bg-green-100 dark:bg-green-900 border-green-200 dark:border-green-700' : 'bg-red-100 dark:bg-red-900 border-red-200 dark:border-red-700'">
+                    <p :class="status.status === 'completed' ? 'text-green-800 dark:text-green-200' : 'text-red-800 dark:text-red-200'">{{ completionMessage }}</p>
+                </div>
+
                 <!-- Polling error -->
                 <div v-if="pollErrorCount >= maxPollErrors" class="mb-4 p-4 bg-yellow-100 dark:bg-yellow-900 border border-yellow-200 dark:border-yellow-700 rounded-lg">
                     <p class="text-yellow-800 dark:text-yellow-200">Le suivi en temps réel s'est arrêté suite à des erreurs de connexion. Rechargez la page pour actualiser le statut.</p>
@@ -152,7 +179,7 @@ onUnmounted(() => {
                         </div>
 
                         <!-- Progress info when running -->
-                        <div v-if="isRunning() && status.progress" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <div v-if="isRunning() && status.progress" aria-live="polite" class="mb-4 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
                             <div class="flex items-center space-x-3">
                                 <svg class="animate-spin h-5 w-5 text-blue-600 dark:text-blue-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                     <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
@@ -215,6 +242,7 @@ onUnmounted(() => {
                         <button
                             @click="startImport"
                             :disabled="isRunning() || isSubmitting"
+                            :aria-busy="isRunning() || isSubmitting"
                             class="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed dark:focus:ring-offset-gray-800"
                         >
                             <svg v-if="isRunning() || isSubmitting" class="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">

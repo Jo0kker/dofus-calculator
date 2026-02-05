@@ -17,9 +17,22 @@ class ImportRecipesJob implements ShouldQueue
     public int $timeout = 3600; // 1 hour max
     public int $tries = 1;
 
+    private const MAX_RECIPES_DEFAULT = 10000;
+
     public function __construct(
         private ?string $triggeredBy = null,
+        private int $maxRecipes = self::MAX_RECIPES_DEFAULT,
     ) {}
+
+    public function failed(?\Throwable $exception): void
+    {
+        Cache::put('import_recipes_status', 'failed', now()->addHours(6));
+        Cache::forget('import_recipes_progress');
+
+        Log::error('ImportRecipesJob marked as failed by queue', [
+            'error' => $exception?->getMessage(),
+        ]);
+    }
 
     public function handle(DofusDBImportService $importService, DiscordWebhookService $discord): void
     {
@@ -33,7 +46,7 @@ class ImportRecipesJob implements ShouldQueue
         Log::info('ImportRecipesJob started', ['triggered_by' => $this->triggeredBy]);
 
         try {
-            $result = $importService->importRecipesFirst(PHP_INT_MAX, 100, function ($processed, $memoryUsage) {
+            $result = $importService->importRecipesFirst($this->maxRecipes, 100, function ($processed, $memoryUsage) {
                 Cache::put('import_recipes_progress', [
                     'processed' => $processed,
                     'memory' => $memoryUsage,

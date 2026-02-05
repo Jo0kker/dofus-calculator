@@ -62,7 +62,8 @@ class DiscordWebhookService
 
         if ($hasErrors) {
             $errorCount = count($errors);
-            $errorSample = implode("\n", array_slice($errors, 0, 5));
+            $sanitizedErrors = array_map(fn (string $err) => str_replace(['`', '@', '<', '>'], '', $err), array_slice($errors, 0, 5));
+            $errorSample = implode("\n", $sanitizedErrors);
             if ($errorCount > 5) {
                 $errorSample .= "\n... et " . ($errorCount - 5) . " autres erreurs";
             }
@@ -93,7 +94,7 @@ class DiscordWebhookService
             if (!$response->successful()) {
                 Log::error('Failed to send Discord webhook', [
                     'status' => $response->status(),
-                    'body' => $response->body(),
+                    'body' => mb_substr($response->body(), 0, 500),
                 ]);
             }
         } catch (\Exception $e) {
