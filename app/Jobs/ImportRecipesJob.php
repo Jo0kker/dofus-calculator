@@ -6,6 +6,7 @@ use App\Services\DiscordWebhookService;
 use App\Services\DofusDBImportService;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Queue\Queueable;
+use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -26,8 +27,13 @@ class ImportRecipesJob implements ShouldQueue
 
     public function failed(?\Throwable $exception): void
     {
-        Cache::put('import_recipes_status', 'failed', now()->addHours(6));
-        Cache::forget('import_recipes_progress');
+        // Only update cache if handle() didn't already set a terminal status
+        // (e.g. job killed by timeout before catch block could run)
+        $currentStatus = Cache::get('import_recipes_status');
+        if ($currentStatus === 'running') {
+            Cache::put('import_recipes_status', 'failed', now()->addHours(6));
+            Cache::forget('import_recipes_progress');
+        }
 
         Log::error('ImportRecipesJob marked as failed by queue', [
             'error' => $exception?->getMessage(),
@@ -83,9 +89,12 @@ class ImportRecipesJob implements ShouldQueue
         } catch (\Exception $e) {
             $importException = $e;
             $duration = microtime(true) - $startTime;
+            $isTransient = $e instanceof ConnectionException;
 
             Log::error('ImportRecipesJob failed', [
                 'error' => $e->getMessage(),
+                'type' => $isTransient ? 'transient (connection)' : 'permanent',
+                'exception_class' => get_class($e),
                 'duration' => round($duration, 2),
             ]);
 
