@@ -67,7 +67,7 @@ const logout = () => {
                                     📊 API Monitoring
                                 </NavLink>
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'admin'" :href="route('admin.commands')" :active="route().current('admin.commands')">
-                                    Commandes
+                                    ⚙️ Commandes
                                 </NavLink>
                             </div>
                         </div>
@@ -242,7 +242,7 @@ const logout = () => {
                             📊 API Monitoring
                         </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'admin'" :href="route('admin.commands')" :active="route().current('admin.commands')">
-                            Commandes
+                            ⚙️ Commandes
                         </ResponsiveNavLink>
                     </div>
 

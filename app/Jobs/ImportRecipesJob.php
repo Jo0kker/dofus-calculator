@@ -23,8 +23,8 @@ class ImportRecipesJob implements ShouldQueue
 
     public function handle(DofusDBImportService $importService, DiscordWebhookService $discord): void
     {
-        Cache::put('import_recipes_status', 'running', now()->addHours(2));
-        Cache::put('import_recipes_started_at', now()->toIso8601String(), now()->addHours(2));
+        Cache::put('import_recipes_status', 'running', now()->addHours(6));
+        Cache::put('import_recipes_started_at', now()->toIso8601String(), now()->addHours(6));
 
         DB::disableQueryLog();
 
@@ -37,7 +37,7 @@ class ImportRecipesJob implements ShouldQueue
                 Cache::put('import_recipes_progress', [
                     'processed' => $processed,
                     'memory' => $memoryUsage,
-                ], now()->addHours(2));
+                ], now()->addHours(6));
             });
 
             $duration = microtime(true) - $startTime;
@@ -49,7 +49,8 @@ class ImportRecipesJob implements ShouldQueue
                 'duration' => round($duration, 2),
             ]);
 
-            Cache::put('import_recipes_status', 'completed', now()->addHours(2));
+            Cache::put('import_recipes_status', 'completed', now()->addHours(6));
+            Cache::forget('import_recipes_progress');
             Cache::put('import_recipes_last_result', [
                 'imported' => $result['imported'],
                 'updated' => $result['updated'],
@@ -58,7 +59,13 @@ class ImportRecipesJob implements ShouldQueue
                 'finished_at' => now()->toIso8601String(),
             ], now()->addDays(7));
 
-            $discord->sendImportResult($result, $duration, $this->triggeredBy);
+            try {
+                $discord->sendImportResult($result, $duration, $this->triggeredBy);
+            } catch (\Exception $e) {
+                Log::warning('Failed to send Discord notification after successful import', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
         } catch (\Exception $e) {
             $duration = microtime(true) - $startTime;
 
@@ -67,13 +74,27 @@ class ImportRecipesJob implements ShouldQueue
                 'duration' => round($duration, 2),
             ]);
 
-            Cache::put('import_recipes_status', 'failed', now()->addHours(2));
-
-            $discord->sendImportResult([
+            Cache::put('import_recipes_status', 'failed', now()->addHours(6));
+            Cache::forget('import_recipes_progress');
+            Cache::put('import_recipes_last_result', [
                 'imported' => 0,
                 'updated' => 0,
-                'errors' => [$e->getMessage()],
-            ], $duration, $this->triggeredBy);
+                'errors_count' => 1,
+                'duration' => round($duration, 2),
+                'finished_at' => now()->toIso8601String(),
+            ], now()->addDays(7));
+
+            try {
+                $discord->sendImportResult([
+                    'imported' => 0,
+                    'updated' => 0,
+                    'errors' => [$e->getMessage()],
+                ], $duration, $this->triggeredBy);
+            } catch (\Exception $discordException) {
+                Log::warning('Failed to send Discord notification after failed import', [
+                    'error' => $discordException->getMessage(),
+                ]);
+            }
 
             throw $e;
         }
