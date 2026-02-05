@@ -524,7 +524,7 @@ class DofusDBImportService
 
             if ($recipe->wasRecentlyCreated) {
                 $imported++;
-            } else {
+            } elseif ($recipe->wasChanged()) {
                 $updated++;
             }
 
