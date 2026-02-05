@@ -18,5 +18,6 @@ Schedule::call(function () {
     }
 
     ImportRecipesJob::dispatch('Planification quotidienne');
-})->dailyAt('04:00')
+})->name('import-recipes-daily')
+    ->dailyAt('04:00')
     ->withoutOverlapping();
