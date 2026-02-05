@@ -42,6 +42,7 @@ class ImportRecipesJob implements ShouldQueue
         DB::disableQueryLog();
 
         $startTime = microtime(true);
+        $importException = null;
 
         Log::info('ImportRecipesJob started', ['triggered_by' => $this->triggeredBy]);
 
@@ -80,6 +81,7 @@ class ImportRecipesJob implements ShouldQueue
                 ]);
             }
         } catch (\Exception $e) {
+            $importException = $e;
             $duration = microtime(true) - $startTime;
 
             Log::error('ImportRecipesJob failed', [
@@ -108,8 +110,12 @@ class ImportRecipesJob implements ShouldQueue
                     'error' => $discordException->getMessage(),
                 ]);
             }
+        } finally {
+            DB::enableQueryLog();
+        }
 
-            throw $e;
+        if ($importException) {
+            throw $importException;
         }
     }
 }
