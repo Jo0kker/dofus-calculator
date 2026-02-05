@@ -65,6 +65,10 @@ class HandleInertiaRequests extends Middleware
                 ->orderBy('name')
                 ->get(),
             'selected_server_id' => $selectedServerId,
+            'flash' => [
+                'success' => fn () => $request->session()->get('success'),
+                'error' => fn () => $request->session()->get('error'),
+            ],
         ];
     }
 }
