@@ -63,6 +63,14 @@ Route::middleware([
 
         // API Monitoring
         Route::get('/admin/api-monitoring', [\App\Http\Controllers\Admin\ApiMonitoringController::class, 'index'])->name('admin.api-monitoring');
+
+    });
+
+    // Admin-only routes
+    Route::middleware(['can:admin'])->group(function () {
+        Route::get('/admin/commands', [\App\Http\Controllers\Admin\AdminCommandController::class, 'index'])->name('admin.commands');
+        Route::post('/admin/commands/import-recipes', [\App\Http\Controllers\Admin\AdminCommandController::class, 'importRecipes'])->name('admin.commands.import-recipes');
+        Route::get('/admin/commands/import-recipes/status', [\App\Http\Controllers\Admin\AdminCommandController::class, 'importStatus'])->name('admin.commands.import-recipes.status');
     });
 });
 
