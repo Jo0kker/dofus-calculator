@@ -46,13 +46,13 @@ const updateResize = (x, y, w, h) => {
         @resizing="updateResize"
     >
         <section
-            class="flex h-full flex-col overflow-hidden rounded-xl border border-slate-600/70 bg-slate-950 text-slate-100 shadow-2xl shadow-black/40"
+            class="flex h-full flex-col overflow-hidden border border-[#083f88] bg-[#d4d0c8] text-slate-950 shadow-[8px_8px_0_rgba(0,0,0,0.28)]"
             @mousedown="emit('focus', windowState.id)"
         >
-            <header class="desktop-window__titlebar flex cursor-move select-none items-center justify-between border-b border-slate-700 bg-slate-900/95 px-3 py-2">
-                <div class="flex min-w-0 items-center gap-2">
-                    <span class="h-2.5 w-2.5 rounded-full bg-emerald-400 shadow shadow-emerald-400/40" />
-                    <h3 class="truncate text-sm font-semibold tracking-wide">
+            <header class="desktop-window__titlebar flex h-8 cursor-move select-none items-center justify-between bg-gradient-to-r from-[#083f88] via-[#0f63bd] to-[#5aa0e6] px-1.5 text-white">
+                <div class="flex min-w-0 items-center gap-2 px-1">
+                    <span class="grid h-4 w-4 place-items-center rounded-sm bg-[#f5c542] text-[10px] text-[#3b2a00]">◆</span>
+                    <h3 class="truncate text-xs font-bold tracking-wide drop-shadow">
                         {{ windowState.title }}
                     </h3>
                 </div>
@@ -60,15 +60,15 @@ const updateResize = (x, y, w, h) => {
                 <div class="flex items-center gap-1">
                     <button
                         type="button"
-                        class="rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
+                        class="window-control"
                         title="Réduire"
                         @click.stop="emit('minimize', windowState.id)"
                     >
-                        —
+                        _
                     </button>
                     <button
                         type="button"
-                        class="rounded px-2 py-1 text-xs text-slate-300 hover:bg-slate-700 hover:text-white"
+                        class="window-control"
                         :title="windowState.maximized ? 'Restaurer' : 'Agrandir'"
                         @click.stop="emit('toggle-maximize', windowState.id)"
                     >
@@ -76,7 +76,7 @@ const updateResize = (x, y, w, h) => {
                     </button>
                     <button
                         type="button"
-                        class="rounded px-2 py-1 text-xs text-slate-300 hover:bg-red-600 hover:text-white"
+                        class="window-control bg-[#c73c3c] text-white hover:bg-[#e24b4b]"
                         title="Fermer"
                         @click.stop="emit('close', windowState.id)"
                     >
@@ -85,9 +85,16 @@ const updateResize = (x, y, w, h) => {
                 </div>
             </header>
 
+            <div class="flex h-7 items-center gap-4 border-b border-[#9c9c9c] bg-[#ece9d8] px-3 text-[11px] text-slate-800">
+                <span>Fichier</span>
+                <span>Édition</span>
+                <span>Affichage</span>
+                <span>Aide</span>
+            </div>
+
             <iframe
                 :src="windowState.url"
-                class="h-full w-full flex-1 border-0 bg-white"
+                class="h-full w-full flex-1 border-0 bg-[#eef3f8]"
                 :title="windowState.title"
             />
         </section>
@@ -101,5 +108,24 @@ const updateResize = (x, y, w, h) => {
 
 .desktop-window-wrapper > .handle {
     z-index: 20;
+}
+
+.window-control {
+    display: grid;
+    height: 1.25rem;
+    min-width: 1.25rem;
+    place-items: center;
+    border: 1px solid #4d4d4d;
+    background: linear-gradient(#ffffff, #c9c4ba);
+    padding: 0 0.25rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #111827;
+    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #7c7c7c;
+}
+
+.window-control:hover {
+    filter: brightness(1.05);
 }
 </style>

@@ -1,6 +1,6 @@
 <script setup>
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { computed, onMounted, onUnmounted } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import ServerSelector from '@/Components/ServerSelector.vue';
 import DesktopWindow from '@/Components/Desktop/DesktopWindow.vue';
@@ -11,6 +11,7 @@ const props = defineProps({
 });
 
 const page = usePage();
+const isStartMenuOpen = ref(false);
 
 const {
     visibleWindows,
@@ -26,8 +27,25 @@ const {
 
 const user = computed(() => page.props.auth?.user);
 
+const apps = [
+    { id: 'items', title: 'Recherche items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Applications' },
+    { id: 'calculator', title: 'Calculateur', url: '/calculator', icon: '🧮', width: 1120, height: 720, group: 'Applications' },
+    { id: 'favorites', title: 'Favoris', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Applications' },
+    { id: 'api-tokens', title: 'API Tokens', url: '/api-tokens', icon: '🔑', width: 920, height: 640, group: 'Outils' },
+    { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Système' },
+];
+
 const openApp = (title, url, options = {}) => {
     openRouteWindow(title, url, options);
+    isStartMenuOpen.value = false;
+};
+
+const openAppDefinition = (app) => {
+    openApp(app.title, app.url, {
+        id: app.id,
+        width: app.width,
+        height: app.height,
+    });
 };
 
 const duplicateCurrentPage = () => {
@@ -76,84 +94,72 @@ const handleDesktopCustomEvent = (event) => {
     handleDesktopWindowPayload(event.detail || {});
 };
 
+const closeStartMenu = (event) => {
+    if (!event.target.closest?.('[data-start-menu]')) {
+        isStartMenuOpen.value = false;
+    }
+};
+
 onMounted(() => {
     window.addEventListener('message', handleDesktopMessage);
     window.addEventListener('dofus-desktop:open-window', handleDesktopCustomEvent);
+    window.addEventListener('click', closeStartMenu);
 });
 
 onUnmounted(() => {
     window.removeEventListener('message', handleDesktopMessage);
     window.removeEventListener('dofus-desktop:open-window', handleDesktopCustomEvent);
+    window.removeEventListener('click', closeStartMenu);
 });
 </script>
 
 <template>
-    <div class="min-h-screen overflow-hidden bg-slate-950 text-slate-100">
-        <div class="absolute inset-0 bg-[radial-gradient(circle_at_top_left,_rgba(56,189,248,0.22),_transparent_32%),radial-gradient(circle_at_bottom_right,_rgba(168,85,247,0.22),_transparent_34%)]" />
+    <div class="relative h-screen overflow-hidden bg-[#0b5f64] font-sans text-slate-950">
+        <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(209,250,229,0.45),transparent_24%),radial-gradient(circle_at_78%_28%,rgba(96,165,250,0.38),transparent_24%),linear-gradient(135deg,#13686d_0%,#0f7978_45%,#0b3d73_100%)]" />
+        <div class="absolute inset-0 opacity-30 [background-image:linear-gradient(45deg,rgba(255,255,255,.16)_25%,transparent_25%,transparent_50%,rgba(255,255,255,.16)_50%,rgba(255,255,255,.16)_75%,transparent_75%,transparent)] [background-size:64px_64px]" />
 
-        <aside class="absolute left-4 top-4 z-30 flex w-64 flex-col rounded-2xl border border-white/10 bg-slate-900/80 p-3 shadow-2xl backdrop-blur">
-            <div class="mb-4 flex items-center gap-3 border-b border-white/10 pb-3">
-                <ApplicationMark class="h-9 w-auto" />
-                <div>
-                    <p class="text-sm font-bold">Dofus Calculator</p>
-                    <p class="text-xs text-slate-400">Bureau multi-fenêtres</p>
-                </div>
+        <header class="absolute left-0 right-0 top-0 z-40 flex h-8 items-center border-b border-[#0f3970] bg-[#d4d0c8] px-2 text-xs shadow-[inset_0_1px_0_#fff,inset_0_-1px_0_#808080]">
+            <div class="flex items-center gap-2 border-r border-[#8f8f8f] pr-3 font-bold text-[#0b3f88]">
+                <ApplicationMark class="h-5 w-auto" />
+                <span>Dofus Calculator Desktop</span>
             </div>
-
-            <div class="mb-4">
-                <p class="mb-2 text-xs uppercase tracking-wide text-slate-400">Serveur</p>
-                <ServerSelector />
-            </div>
-
-            <nav class="space-y-2">
-                <button type="button" class="desktop-launcher" @click="openApp('Recherche items', '/items', { id: 'items', width: 980, height: 680 })">
-                    🧰 Items
-                </button>
-                <button type="button" class="desktop-launcher" @click="openApp('Calculateur', '/calculator', { id: 'calculator', width: 1120, height: 720 })">
-                    🧮 Calculateur
-                </button>
-                <button type="button" class="desktop-launcher" @click="openApp('Favoris', '/favorites', { id: 'favorites', width: 900, height: 640 })">
-                    ⭐ Favoris
-                </button>
-                <button type="button" class="desktop-launcher" @click="openApp('API Tokens', '/api-tokens', { id: 'api-tokens', width: 900, height: 620 })">
-                    🔑 API Tokens
-                </button>
-                <button type="button" class="desktop-launcher" @click="openApp('Profil', '/user/profile', { id: 'profile', width: 980, height: 720 })">
-                    👤 Profil
-                </button>
+            <nav class="flex h-full items-center">
+                <button type="button" class="top-menu-item" @click.stop="isStartMenuOpen = !isStartMenuOpen">Applications</button>
+                <button type="button" class="top-menu-item" @click="duplicateCurrentPage">Fenêtre</button>
+                <button type="button" class="top-menu-item" @click="resetDesktop">Réinitialiser</button>
+                <button type="button" class="top-menu-item" @click="switchToClassic">Mode classique</button>
             </nav>
+            <div class="ml-auto flex items-center gap-2 text-[11px] text-slate-700">
+                <span>{{ user?.name }}</span>
+            </div>
+        </header>
 
-            <div class="mt-4 border-t border-white/10 pt-3 text-xs text-slate-400">
-                <p class="mb-2">Astuce : ouvre plusieurs items depuis les fenêtres pour comparer sans multiplier les onglets navigateur.</p>
-                <button type="button" class="text-sky-300 hover:text-sky-200" @click="resetDesktop">
-                    Réinitialiser le bureau
+        <main class="absolute inset-x-0 bottom-10 top-8 z-10">
+            <section class="absolute left-5 top-5 grid w-24 grid-cols-1 gap-4">
+                <button
+                    v-for="app in apps"
+                    :key="app.id"
+                    type="button"
+                    class="desktop-icon"
+                    @dblclick="openAppDefinition(app)"
+                    @click="focusWindow(app.id)"
+                >
+                    <span class="desktop-icon__glyph">{{ app.icon }}</span>
+                    <span class="desktop-icon__label">{{ app.title }}</span>
                 </button>
-            </div>
-        </aside>
+            </section>
 
-        <main class="absolute inset-0 z-10">
-            <div class="absolute left-80 top-4 z-10 rounded-xl border border-white/10 bg-slate-900/70 px-4 py-2 text-sm shadow-lg backdrop-blur">
-                Fenêtre active : {{ title || 'Dofus Calculator' }}
-            </div>
-
-            <div class="absolute left-80 top-16 h-[calc(100vh-7rem)] w-[calc(100vw-21rem)] overflow-hidden rounded-2xl border border-white/10 bg-slate-100 shadow-2xl">
-                <div class="flex h-10 items-center justify-between border-b border-slate-300 bg-slate-200 px-3 text-slate-700">
-                    <span class="text-sm font-semibold">{{ title }}</span>
-                    <button
-                        type="button"
-                        class="rounded bg-slate-800 px-2 py-1 text-xs font-semibold text-white hover:bg-slate-700"
-                        @click="duplicateCurrentPage"
-                    >
-                        Dupliquer
-                    </button>
+            <section class="absolute right-5 top-5 w-72 border border-[#404040] bg-[#d4d0c8] p-2 shadow-[4px_4px_0_rgba(0,0,0,0.25)]">
+                <div class="mb-2 bg-gradient-to-r from-[#083f88] to-[#5aa0e6] px-2 py-1 text-xs font-bold text-white">
+                    Panneau système
                 </div>
-                <div class="h-[calc(100%-2.5rem)] overflow-auto bg-gray-100 text-slate-900">
-                    <div class="desktop-page-slot">
-                        <slot name="header" />
-                        <slot />
+                <div class="space-y-3 text-xs">
+                    <ServerSelector compact />
+                    <div class="border border-[#9c9c9c] bg-[#ece9d8] p-2 text-slate-700 shadow-inner">
+                        Double-clique une icône ou passe par Démarrer pour ouvrir plusieurs fenêtres.
                     </div>
                 </div>
-            </div>
+            </section>
 
             <DesktopWindow
                 v-for="windowState in visibleWindows"
@@ -167,56 +173,213 @@ onUnmounted(() => {
             />
         </main>
 
-        <footer class="absolute bottom-0 left-0 right-0 z-40 flex h-14 items-center gap-2 border-t border-white/10 bg-slate-900/90 px-4 shadow-2xl backdrop-blur">
-            <button type="button" class="rounded-lg bg-sky-600 px-3 py-2 text-sm font-semibold text-white hover:bg-sky-500" @click="openApp('Recherche items', '/items', { id: 'items' })">
-                Dofus
-            </button>
+        <footer class="absolute bottom-0 left-0 right-0 z-50 flex h-10 items-center border-t border-[#ffffff] bg-[#d4d0c8] px-1 shadow-[inset_0_1px_0_#ffffff]">
+            <div class="relative" data-start-menu>
+                <button
+                    type="button"
+                    class="start-button"
+                    :class="{ 'start-button--active': isStartMenuOpen }"
+                    @click.stop="isStartMenuOpen = !isStartMenuOpen"
+                >
+                    <span class="text-base">◆</span>
+                    Démarrer
+                </button>
+
+                <div v-if="isStartMenuOpen" class="start-menu">
+                    <div class="start-menu__rail">DOFUS</div>
+                    <div class="flex-1 py-1">
+                        <button
+                            v-for="app in apps"
+                            :key="app.id"
+                            type="button"
+                            class="start-menu__item"
+                            @click="openAppDefinition(app)"
+                        >
+                            <span class="text-lg">{{ app.icon }}</span>
+                            <span>
+                                <span class="block font-bold">{{ app.title }}</span>
+                                <span class="text-[10px] text-slate-600">{{ app.group }}</span>
+                            </span>
+                        </button>
+                        <div class="my-1 border-t border-[#9c9c9c]" />
+                        <button type="button" class="start-menu__item" @click="resetDesktop">
+                            <span class="text-lg">🧹</span>
+                            <span class="font-bold">Réinitialiser le bureau</span>
+                        </button>
+                        <button type="button" class="start-menu__item" @click="logout">
+                            <span class="text-lg">⏻</span>
+                            <span class="font-bold">Déconnexion</span>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mx-1 h-7 border-l border-[#808080] border-r border-white" />
 
             <button
-                v-for="windowState in minimizedWindows"
-                :key="windowState.id"
+                v-for="windowState in visibleWindows"
+                :key="`task-${windowState.id}`"
                 type="button"
-                class="rounded-lg bg-slate-800 px-3 py-2 text-sm text-slate-200 hover:bg-slate-700"
+                class="task-button"
+                :style="{ zIndex: windowState.z }"
                 @click="focusWindow(windowState.id)"
             >
                 {{ windowState.title }}
             </button>
 
-            <div class="ml-auto flex items-center gap-3 text-sm text-slate-300">
-                <button type="button" class="hover:text-white" @click="switchToClassic">
-                    Mode classique
-                </button>
-                <Link :href="route('profile.show')" class="hover:text-white">
+            <button
+                v-for="windowState in minimizedWindows"
+                :key="`min-${windowState.id}`"
+                type="button"
+                class="task-button task-button--minimized"
+                @click="focusWindow(windowState.id)"
+            >
+                {{ windowState.title }}
+            </button>
+
+            <div class="ml-auto flex h-8 min-w-36 items-center justify-end gap-2 border border-[#8f8f8f] bg-[#ece9d8] px-2 text-[11px] shadow-inner">
+                <Link :href="route('profile.show')" class="max-w-24 truncate hover:underline">
                     {{ user?.name }}
                 </Link>
-                <button type="button" class="rounded bg-slate-800 px-3 py-1.5 hover:bg-slate-700" @click="logout">
-                    Déconnexion
-                </button>
+                <span>{{ new Date().toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' }) }}</span>
             </div>
         </footer>
     </div>
 </template>
 
 <style scoped>
-.desktop-launcher {
-    display: flex;
-    width: 100%;
-    align-items: center;
-    gap: 0.5rem;
-    border-radius: 0.75rem;
-    padding: 0.625rem 0.75rem;
-    text-align: left;
-    font-size: 0.875rem;
-    color: rgb(226 232 240);
-    transition: background-color 150ms ease, color 150ms ease;
+.top-menu-item {
+    height: 100%;
+    padding: 0 0.75rem;
+    color: #1f2937;
 }
 
-.desktop-launcher:hover {
-    background: rgb(51 65 85 / 0.9);
+.top-menu-item:hover {
+    background: #0f63bd;
     color: white;
 }
 
-.desktop-page-slot :deep(header) {
-    display: none;
+.desktop-icon {
+    display: flex;
+    min-height: 5.5rem;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.35rem;
+    border: 1px solid transparent;
+    padding: 0.35rem;
+    color: white;
+    text-align: center;
+    text-shadow: 1px 1px 2px rgb(0 0 0 / 0.9);
+}
+
+.desktop-icon:hover,
+.desktop-icon:focus {
+    border-color: rgb(191 219 254 / 0.7);
+    background: rgb(59 130 246 / 0.22);
+    outline: none;
+}
+
+.desktop-icon__glyph {
+    display: grid;
+    height: 2.75rem;
+    width: 2.75rem;
+    place-items: center;
+    border: 1px solid rgb(255 255 255 / 0.5);
+    background: rgb(15 23 42 / 0.45);
+    font-size: 1.65rem;
+    box-shadow: 2px 2px 0 rgb(0 0 0 / 0.25);
+}
+
+.desktop-icon__label {
+    width: 100%;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.05;
+}
+
+.start-button,
+.task-button {
+    height: 2rem;
+    border: 1px solid #505050;
+    background: linear-gradient(#ffffff, #c5c0b8);
+    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #808080;
+    color: #111827;
+    font-size: 0.75rem;
+    font-weight: 700;
+}
+
+.start-button {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0 0.65rem;
+}
+
+.start-button--active,
+.start-button:active,
+.task-button:active {
+    box-shadow: inset -1px -1px 0 #ffffff, inset 1px 1px 0 #808080;
+}
+
+.task-button {
+    margin-right: 0.25rem;
+    max-width: 11rem;
+    min-width: 7rem;
+    overflow: hidden;
+    padding: 0 0.65rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: left;
+}
+
+.task-button--minimized {
+    opacity: 0.78;
+}
+
+.start-menu {
+    position: absolute;
+    bottom: 2.35rem;
+    left: 0;
+    display: flex;
+    width: 21rem;
+    min-height: 24rem;
+    border: 1px solid #404040;
+    background: #d4d0c8;
+    box-shadow: 6px 6px 0 rgb(0 0 0 / 0.32), inset 1px 1px 0 #ffffff;
+}
+
+.start-menu__rail {
+    display: flex;
+    width: 3.25rem;
+    align-items: end;
+    justify-content: center;
+    background: linear-gradient(#083f88, #0f63bd);
+    padding-bottom: 0.75rem;
+    color: white;
+    font-size: 1.2rem;
+    font-weight: 900;
+    letter-spacing: 0.18em;
+    writing-mode: vertical-rl;
+    transform: rotate(180deg);
+}
+
+.start-menu__item {
+    display: flex;
+    width: 100%;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.7rem;
+    text-align: left;
+    font-size: 0.78rem;
+    color: #111827;
+}
+
+.start-menu__item:hover {
+    background: #0f63bd;
+    color: white;
+}
+
+.start-menu__item:hover span span {
+    color: #dbeafe;
 }
 </style>

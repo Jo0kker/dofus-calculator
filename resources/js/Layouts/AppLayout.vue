@@ -62,15 +62,15 @@ const openCurrentFrameInDesktopWindow = () => {
         <slot />
     </DesktopLayout>
 
-    <div v-else-if="isDesktopFrame" class="min-h-screen bg-gray-100 text-gray-900">
+    <div v-else-if="isDesktopFrame" class="min-h-screen bg-[#eef3f8] text-gray-900">
         <Head :title="title" />
-        <header v-if="$slots.header" class="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+        <header v-if="$slots.header" class="flex items-center justify-between gap-4 border-b border-[#9c9c9c] bg-[#ece9d8] px-5 py-3 shadow-[inset_0_1px_0_#fff]">
             <div class="min-w-0">
                 <slot name="header" />
             </div>
             <button
                 type="button"
-                class="shrink-0 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                class="shrink-0 border border-[#505050] bg-[#d4d0c8] px-3 py-1.5 text-xs font-bold text-slate-900 shadow-[inset_1px_1px_0_#fff,inset_-1px_-1px_0_#808080] hover:bg-[#c9c4ba]"
                 @click="openCurrentFrameInDesktopWindow"
             >
                 Ouvrir dans une nouvelle fenêtre
