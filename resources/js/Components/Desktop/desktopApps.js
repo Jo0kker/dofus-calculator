@@ -1,3 +1,4 @@
+import ApiTokensDeskApp from '@/Components/Desktop/Apps/ApiTokensDeskApp.vue';
 import CalculatorDeskApp from '@/Components/Desktop/Apps/CalculatorDeskApp.vue';
 import CompareDeskApp from '@/Components/Desktop/Apps/CompareDeskApp.vue';
 import CraftCartDeskApp from '@/Components/Desktop/Apps/CraftCartDeskApp.vue';
@@ -11,6 +12,7 @@ import ServerDeskApp from '@/Components/Desktop/Apps/ServerDeskApp.vue';
 import WorkspaceDeskApp from '@/Components/Desktop/Apps/WorkspaceDeskApp.vue';
 
 export const desktopAppComponents = {
+    apiTokens: ApiTokensDeskApp,
     calculator: CalculatorDeskApp,
     compare: CompareDeskApp,
     craftCart: CraftCartDeskApp,
@@ -36,13 +38,13 @@ export const desktopAppRegistry = [
     { id: 'server', title: 'Serveur', icon: '🌍', component: 'server', width: 440, height: 420, group: 'Système', description: 'Choisir le serveur de prix' },
     { id: 'quickActions', title: 'Actions rapides', icon: '⚡', component: 'quickActions', width: 500, height: 460, group: 'Système', description: 'Ouvrir les outils utiles' },
     { id: 'notifications', title: 'Notifications', icon: '🔔', component: 'notifications', width: 520, height: 460, group: 'Système', description: 'Messages et alertes' },
+    { id: 'apiTokens', title: 'API Tokens', icon: '🔑', component: 'apiTokens', width: 840, height: 640, group: 'Compte', description: 'Créer et gérer les clés API' },
 ];
 
 export const legacyDesktopApps = [
     { id: 'legacy-items', title: 'Catalogue items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Pages' },
     { id: 'legacy-calculator', title: 'Page calculateur', url: '/calculator', icon: '🧮', width: 1120, height: 720, group: 'Pages' },
     { id: 'legacy-favorites', title: 'Page favoris', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Pages' },
-    { id: 'api-tokens', title: 'API Tokens', url: '/api-tokens', icon: '🔑', width: 920, height: 640, group: 'Compte' },
     { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Compte' },
 ];
 

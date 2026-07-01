@@ -59,6 +59,21 @@ it('rejects desktop item api when the user is not in desktop mode', function () 
     $this->getJson('/desktop/api/items')->assertForbidden();
 });
 
+it('returns desktop api tokens only in desktop mode', function () {
+    $desktopUser = User::factory()->create(['interface_mode' => 'desktop']);
+    $desktopUser->createToken('Mobile app', ['read']);
+
+    $this->actingAs($desktopUser)
+        ->getJson('/desktop/api/api-tokens')
+        ->assertOk()
+        ->assertJsonPath('tokens.0.name', 'Mobile app')
+        ->assertJsonPath('tokens.0.abilities.0', 'read');
+
+    $this->actingAs(User::factory()->create(['interface_mode' => 'classic']))
+        ->getJson('/desktop/api/api-tokens')
+        ->assertForbidden();
+});
+
 it('returns a desktop item inspector payload', function () {
     $this->actingAs(User::factory()->create(['interface_mode' => 'desktop']));
 

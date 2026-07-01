@@ -115,12 +115,6 @@ const updateResize = (x, y, w, h) => {
                 </div>
             </header>
 
-            <div class="desktop-window__drag-handle flex h-7 cursor-move select-none items-center gap-4 border-b border-[#9c9c9c] bg-[#ece9d8] px-3 text-[11px] text-slate-800">
-                <span>Fichier</span>
-                <span>Édition</span>
-                <span>Affichage</span>
-                <span>Aide</span>
-            </div>
 
             <div
                 v-if="windowState.component && desktopAppComponents[windowState.component]"
@@ -137,7 +131,7 @@ const updateResize = (x, y, w, h) => {
             <iframe
                 v-else-if="windowState.url"
                 :src="windowState.url"
-                class="h-full w-full flex-1 border-0 bg-[#111827]"
+                class="min-h-0 w-full flex-1 border-0 bg-[#111827]"
                 :title="windowState.title"
             />
             <div v-else class="grid h-full flex-1 place-items-center bg-[#f3f0df] p-6 text-center text-xs text-slate-600">

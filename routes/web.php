@@ -9,6 +9,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\Desktop\DesktopApiTokenController;
 use App\Http\Controllers\Desktop\DesktopItemController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
@@ -35,6 +36,9 @@ Route::middleware([
     Route::prefix('desktop/api')->name('desktop.api.')->group(function () {
         Route::get('/items', [DesktopItemController::class, 'index'])->name('items.index');
         Route::get('/items/{item}', [DesktopItemController::class, 'show'])->name('items.show');
+        Route::get('/api-tokens', [DesktopApiTokenController::class, 'index'])->name('api-tokens.index');
+        Route::post('/api-tokens', [DesktopApiTokenController::class, 'store'])->name('api-tokens.store');
+        Route::delete('/api-tokens/{token}', [DesktopApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
     });
 
     // Calculator routes

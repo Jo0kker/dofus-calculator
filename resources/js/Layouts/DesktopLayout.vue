@@ -71,16 +71,6 @@ const changeDesktopScale = (event) => {
     desktopScale.value = updateDesktopScale(event.target.value);
 };
 
-const duplicateCurrentPage = () => {
-    if (typeof window === 'undefined') {
-        return;
-    }
-
-    openRouteWindow(props.title || 'Page courante', `${window.location.pathname}${window.location.search}`, {
-        width: 980,
-        height: 680,
-    });
-};
 
 const logout = () => {
     router.post(route('logout'));
@@ -153,7 +143,6 @@ onUnmounted(() => {
             </div>
             <nav class="flex h-full items-center">
                 <button type="button" class="top-menu-item" @click.stop="isStartMenuOpen = !isStartMenuOpen">Applications</button>
-                <button type="button" class="top-menu-item" @click="duplicateCurrentPage">Fenêtre</button>
                 <button type="button" class="top-menu-item" @click="resetDesktop">Réinitialiser</button>
                 <button type="button" class="top-menu-item" @click="switchToClassic">Mode classique</button>
             </nav>
@@ -237,7 +226,7 @@ onUnmounted(() => {
 
                 <div v-if="isStartMenuOpen" class="start-menu">
                     <div class="start-menu__rail">DOFUS</div>
-                    <div class="flex-1 py-1">
+                    <div class="start-menu__content flex-1 py-1">
                         <button
                             v-for="app in desktopApps"
                             :key="app.id"
@@ -406,10 +395,16 @@ onUnmounted(() => {
     left: 0;
     display: flex;
     width: 21rem;
-    min-height: 24rem;
+    max-height: calc(100vh - 4rem);
+    min-height: min(24rem, calc(100vh - 4rem));
+    overflow: hidden;
     border: 1px solid #404040;
     background: #d4d0c8;
     box-shadow: 6px 6px 0 rgb(0 0 0 / 0.32), inset 1px 1px 0 #ffffff;
+}
+
+.start-menu__content {
+    overflow-y: auto;
 }
 
 .start-menu__rail {

@@ -20,12 +20,9 @@ const props = defineProps({
 const showingNavigationDropdown = ref(false);
 const page = usePage();
 const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
+const user = computed(() => page.props.auth?.user);
 
-const isDesktopMode = computed(() => {
-    const user = page.props.auth?.user;
-
-    return user?.interface_mode === 'desktop' && !isDesktopFrame.value;
-});
+const isDesktopMode = computed(() => user.value?.interface_mode === 'desktop' && !isDesktopFrame.value);
 
 const desktopFrameScale = computed(() => {
     if (typeof window === 'undefined') {
@@ -49,6 +46,22 @@ const switchToTeam = (team) => {
 
 const logout = () => {
     router.post(route('logout'));
+};
+
+const switchToDesktop = () => {
+    if (!user.value) {
+        return;
+    }
+
+    router.post(route('user-profile-information.update'), {
+        _method: 'PUT',
+        name: user.value.name,
+        email: user.value.email,
+        interface_mode: 'desktop',
+    }, {
+        preserveScroll: true,
+        preserveState: false,
+    });
 };
 
 const openCurrentFrameInDesktopWindow = () => {
@@ -122,6 +135,14 @@ const openCurrentFrameInDesktopWindow = () => {
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('favorites.index')" :active="route().current('favorites.*')">
                                     Favoris
                                 </NavLink>
+                                <button
+                                    v-if="$page.props.auth && $page.props.auth.user"
+                                    type="button"
+                                    class="inline-flex items-center border-b-2 border-transparent px-1 pt-1 text-sm font-medium leading-5 text-gray-500 transition duration-150 ease-in-out hover:border-gray-300 hover:text-gray-700 focus:border-gray-300 focus:text-gray-700 focus:outline-none dark:text-gray-400 dark:hover:border-gray-700 dark:hover:text-gray-300"
+                                    @click="switchToDesktop"
+                                >
+                                    Mode bureau
+                                </button>
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('moderation.reports')" :active="route().current('moderation.*')">
                                     🛡️ Modération
                                 </NavLink>
@@ -297,6 +318,14 @@ const openCurrentFrameInDesktopWindow = () => {
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user" :href="route('favorites.index')" :active="route().current('favorites.*')">
                             Favoris
                         </ResponsiveNavLink>
+                        <button
+                            v-if="$page.props.auth && $page.props.auth.user"
+                            type="button"
+                            class="block w-full border-l-4 border-transparent py-2 pe-4 ps-3 text-start text-base font-medium text-gray-600 transition duration-150 ease-in-out hover:border-gray-300 hover:bg-gray-50 hover:text-gray-800 focus:border-gray-300 focus:bg-gray-50 focus:text-gray-800 focus:outline-none dark:text-gray-400 dark:hover:border-gray-600 dark:hover:bg-gray-700 dark:hover:text-gray-200 dark:focus:border-gray-600 dark:focus:bg-gray-700 dark:focus:text-gray-200"
+                            @click="switchToDesktop"
+                        >
+                            Basculer en mode bureau
+                        </button>
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('moderation.reports')" :active="route().current('moderation.*')">
                             🛡️ Modération
                         </ResponsiveNavLink>
