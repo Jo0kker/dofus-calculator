@@ -24,6 +24,20 @@ const getDirectPrice = () => {
     return totalPrice / item.value.prices.length;
 };
 
+const descriptionText = () => {
+    const description = item.value?.metadata?.description;
+
+    if (!description) return '';
+    if (typeof description === 'string') return description.replace(/\\n/g, '\n').trim();
+
+    if (typeof description === 'object') {
+        const preferred = description.fr || description.en || Object.values(description).find(value => typeof value === 'string');
+        return typeof preferred === 'string' ? preferred.replace(/\\n/g, '\n').trim() : '';
+    }
+
+    return '';
+};
+
 const reloadItem = () => loadItem();
 
 const loadItem = async () => {
@@ -42,7 +56,7 @@ onMounted(loadItem);
 </script>
 
 <template>
-    <DesktopAppShell title="Inspecteur item" subtitle="Détail compact avec actions vers les fenêtres métier.">
+    <DesktopAppShell title="Inspecteur item" subtitle="Prix, recette et calculs de craft.">
         <div v-if="loading" class="p-6 text-center text-xs text-slate-500">Chargement…</div>
         <div v-else-if="!item" class="p-6 text-center text-xs text-slate-500">Sélectionne un item depuis la recherche.</div>
         <div v-else class="space-y-3">
@@ -54,7 +68,7 @@ onMounted(loadItem);
                 <div class="min-w-0 flex-1">
                     <h3 class="text-base font-black text-slate-950">{{ item.name }}</h3>
                     <p class="text-xs text-slate-600">Niv. {{ item.level || '—' }} · {{ item.type || 'Type inconnu' }}</p>
-                    <p v-if="item.metadata?.description" class="mt-2 text-xs leading-relaxed text-slate-700">{{ item.metadata.description }}</p>
+                    <p v-if="descriptionText()" class="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-700">{{ descriptionText() }}</p>
                 </div>
                     </section>
 
