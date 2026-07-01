@@ -122,14 +122,18 @@ const updateResize = (x, y, w, h) => {
                 <span>Aide</span>
             </div>
 
-            <component
-                :is="desktopAppComponents[windowState.component]"
+            <div
                 v-if="windowState.component && desktopAppComponents[windowState.component]"
-                :payload="windowState.payload || {}"
-                class="desktop-window__scaled-content min-h-0 flex-1"
+                class="desktop-window__scaled-viewport min-h-0 flex-1"
                 :style="{ '--desktop-window-scale': desktopScale }"
-                @open-app="(appId, payload) => emit('open-app', appId, payload)"
-            />
+            >
+                <component
+                    :is="desktopAppComponents[windowState.component]"
+                    :payload="windowState.payload || {}"
+                    class="desktop-window__scaled-content"
+                    @open-app="(appId, payload) => emit('open-app', appId, payload)"
+                />
+            </div>
             <iframe
                 v-else-if="windowState.url"
                 :src="windowState.url"
@@ -155,7 +159,13 @@ const updateResize = (x, y, w, h) => {
     z-index: 20;
 }
 
+.desktop-window__scaled-viewport {
+    overflow: hidden;
+}
+
 .desktop-window__scaled-content {
+    display: block;
+    min-width: 0;
     transform: scale(var(--desktop-window-scale));
     transform-origin: top left;
     width: calc(100% / var(--desktop-window-scale));
