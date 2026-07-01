@@ -36,6 +36,11 @@ const {
 } = useDesktopWindows();
 
 const user = computed(() => page.props.auth?.user);
+const activeWindowId = computed(() => {
+    const orderedWindows = [...visibleWindows.value].sort((left, right) => right.z - left.z);
+
+    return orderedWindows[0]?.id;
+});
 
 const apps = [
     { id: 'items', title: 'Recherche items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Applications' },
@@ -197,6 +202,7 @@ onUnmounted(() => {
             <DesktopWindow
                 v-for="windowState in visibleWindows"
                 :key="windowState.id"
+                :is-active="windowState.id === activeWindowId"
                 :window-state="windowState"
                 @close="closeWindow"
                 @focus="focusWindow"

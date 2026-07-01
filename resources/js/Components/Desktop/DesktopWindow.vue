@@ -7,6 +7,10 @@ const props = defineProps({
         type: Object,
         required: true,
     },
+    isActive: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits([
@@ -49,7 +53,7 @@ const updateResize = (x, y, w, h) => {
         :w="windowState.w"
         :h="windowState.h"
         :z="windowState.z"
-        :active="true"
+        :active="isActive"
         :parent="true"
         :draggable="!windowState.maximized"
         :resizable="!windowState.maximized"
@@ -57,7 +61,7 @@ const updateResize = (x, y, w, h) => {
         :min-height="280"
         :on-drag-start="startInteraction"
         :on-resize-start="startInteraction"
-        drag-handle=".desktop-window__titlebar"
+        drag-handle=".desktop-window__drag-handle"
         class-name="desktop-window-wrapper"
         @activated="emit('focus', windowState.id)"
         @dragging="updateDrag"
@@ -69,7 +73,7 @@ const updateResize = (x, y, w, h) => {
             class="flex h-full flex-col overflow-hidden border border-[#083f88] bg-[#d4d0c8] text-slate-950 shadow-[8px_8px_0_rgba(0,0,0,0.28)]"
             @mousedown="emit('focus', windowState.id)"
         >
-            <header class="desktop-window__titlebar flex h-8 cursor-move select-none items-center justify-between bg-gradient-to-r from-[#083f88] via-[#0f63bd] to-[#5aa0e6] px-1.5 text-white">
+            <header class="desktop-window__drag-handle flex h-8 cursor-move select-none items-center justify-between bg-gradient-to-r from-[#083f88] via-[#0f63bd] to-[#5aa0e6] px-1.5 text-white">
                 <div class="flex min-w-0 items-center gap-2 px-1">
                     <span class="grid h-4 w-4 place-items-center rounded-sm bg-[#f5c542] text-[10px] text-[#3b2a00]">◆</span>
                     <h3 class="truncate text-xs font-bold tracking-wide drop-shadow">
@@ -105,7 +109,7 @@ const updateResize = (x, y, w, h) => {
                 </div>
             </header>
 
-            <div class="flex h-7 items-center gap-4 border-b border-[#9c9c9c] bg-[#ece9d8] px-3 text-[11px] text-slate-800">
+            <div class="desktop-window__drag-handle flex h-7 cursor-move select-none items-center gap-4 border-b border-[#9c9c9c] bg-[#ece9d8] px-3 text-[11px] text-slate-800">
                 <span>Fichier</span>
                 <span>Édition</span>
                 <span>Affichage</span>
