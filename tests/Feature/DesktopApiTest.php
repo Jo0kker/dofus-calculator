@@ -110,5 +110,17 @@ it('returns a desktop item inspector payload', function () {
         ->assertJsonPath('item.recipe.profession', 'Tailleur')
         ->assertJsonPath('item.recipe.ingredients.0.name', 'Poil de Prespic')
         ->assertJsonPath('item.recipe.ingredients.0.quantity', 10)
+        ->assertJsonPath('item.recipe.ingredients.0.pivot.quantity', 10)
+        ->assertJsonStructure([
+            'item' => [
+                'prices',
+                'recipe' => [
+                    'ingredients' => [[
+                        'prices',
+                        'pivot' => ['quantity'],
+                    ]],
+                ],
+            ],
+        ])
         ->assertJsonPath('item.used_in_recipes', []);
 });

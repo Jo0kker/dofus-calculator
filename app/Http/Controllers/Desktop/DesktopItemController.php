@@ -50,9 +50,23 @@ class DesktopItemController extends Controller
     {
         $this->ensureDesktopMode($request);
 
+        $selectedServerId = session('selected_server_id');
+        if ($request->user()?->server_id) {
+            $selectedServerId = $request->user()->server_id;
+        }
+
+        $approvedPricesForServer = function ($query) use ($selectedServerId) {
+            $query->where('status', 'approved');
+            if ($selectedServerId) {
+                $query->where('server_id', $selectedServerId);
+            }
+            $query->orderBy('updated_at', 'desc')->with('server');
+        };
+
         $item->load([
-            'recipe.ingredients',
-            'prices' => fn ($query) => $query->where('status', 'approved')->latest()->limit(5)->with('server'),
+            'recipe.ingredients.prices' => $approvedPricesForServer,
+            'recipe.ingredients.recipe.ingredients.prices' => $approvedPricesForServer,
+            'prices' => $approvedPricesForServer,
         ]);
 
         $usedInRecipes = Recipe::query()
@@ -65,26 +79,50 @@ class DesktopItemController extends Controller
             'item' => [
                 ...$this->itemSummary($item),
                 'metadata' => $item->metadata ?? [],
-                'prices' => $item->prices->map(fn ($price) => [
-                    'id' => $price->id,
-                    'price' => $price->price,
-                    'quantity' => $price->quantity,
-                    'server' => $price->server?->name,
-                    'updated_at' => $price->updated_at?->toISOString(),
-                ])->values(),
-                'recipe' => $item->recipe ? [
-                    'id' => $item->recipe->id,
-                    'profession' => $item->recipe->profession,
-                    'profession_level' => $item->recipe->profession_level,
-                    'quantity_produced' => $item->recipe->quantity_produced,
-                    'ingredients' => $item->recipe->ingredients->map(fn (Item $ingredient) => [
-                        ...$this->itemSummary($ingredient),
-                        'quantity' => $ingredient->pivot->quantity,
-                    ])->values(),
-                ] : null,
+                'prices' => $item->prices->map(fn ($price) => $this->priceSummary($price))->values(),
+                'recipe' => $this->recipePayload($item->recipe),
                 'used_in_recipes' => $usedInRecipes->map(fn (Recipe $recipe) => $this->itemSummary($recipe->item))->values(),
             ],
         ]);
+    }
+
+
+    private function recipePayload(?Recipe $recipe, int $depth = 0): ?array
+    {
+        if (! $recipe) {
+            return null;
+        }
+
+        return [
+            'id' => $recipe->id,
+            'profession' => $recipe->profession,
+            'profession_level' => $recipe->profession_level,
+            'quantity_produced' => $recipe->quantity_produced,
+            'ingredients' => $recipe->ingredients->map(fn (Item $ingredient) => [
+                ...$this->itemSummary($ingredient),
+                'pivot' => ['quantity' => $ingredient->pivot->quantity],
+                'quantity' => $ingredient->pivot->quantity,
+                'prices' => $ingredient->prices->map(fn ($price) => $this->priceSummary($price))->values(),
+                'recipe' => $depth < 2 && $ingredient->relationLoaded('recipe')
+                    ? $this->recipePayload($ingredient->recipe, $depth + 1)
+                    : null,
+            ])->values(),
+        ];
+    }
+
+    private function priceSummary($price): array
+    {
+        return [
+            'id' => $price->id,
+            'price' => $price->price,
+            'quantity' => $price->quantity,
+            'server_id' => $price->server_id,
+            'server' => $price->server ? [
+                'id' => $price->server->id,
+                'name' => $price->server->name,
+            ] : null,
+            'updated_at' => $price->updated_at?->toISOString(),
+        ];
     }
 
     private function ensureDesktopMode(Request $request): void
