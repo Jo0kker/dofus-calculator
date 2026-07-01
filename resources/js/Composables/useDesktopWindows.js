@@ -1,5 +1,5 @@
 import { computed, reactive } from 'vue';
-import { withDesktopFrame } from '@/Composables/useDesktopBridge';
+import { storeDesktopScale, withDesktopFrame } from '@/Composables/useDesktopBridge';
 
 const STORAGE_KEY = 'dofus-calculator.desktop.windows.v1';
 const MIN_WIDTH = 420;
@@ -22,6 +22,8 @@ const defaultWindows = [
     },
 ];
 
+const normalizeDesktopUrl = (url) => withDesktopFrame(url);
+
 const readStoredWindows = () => {
     if (typeof window === 'undefined') {
         return defaultWindows;
@@ -41,7 +43,7 @@ const readStoredWindows = () => {
         return parsed.map((windowState, index) => ({
             id: String(windowState.id || `window-${index}`),
             title: String(windowState.title || 'Fenêtre'),
-            url: String(windowState.url || '/?desktop_frame=1'),
+            url: normalizeDesktopUrl(String(windowState.url || '/?desktop_frame=1')),
             x: Number(windowState.x ?? 48 + index * 32),
             y: Number(windowState.y ?? 48 + index * 32),
             w: Math.max(Number(windowState.w ?? DEFAULT_WIDTH), MIN_WIDTH),
@@ -69,8 +71,6 @@ const persist = () => {
 
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state.windows));
 };
-
-const normalizeDesktopUrl = (url) => withDesktopFrame(url);
 
 const nextCascadePosition = () => {
     const offset = state.windows.length * 34;
@@ -189,8 +189,23 @@ export function useDesktopWindows() {
         persist();
     };
 
+    const updateDesktopScale = (scale) => {
+        const normalizedScale = storeDesktopScale(scale);
+
+        state.windows.forEach((windowState) => {
+            windowState.url = withDesktopFrame(windowState.url, { scale: normalizedScale });
+        });
+
+        persist();
+
+        return normalizedScale;
+    };
+
     const resetDesktop = () => {
-        state.windows.splice(0, state.windows.length, ...defaultWindows.map((windowState) => ({ ...windowState })));
+        state.windows.splice(0, state.windows.length, ...defaultWindows.map((windowState) => ({
+            ...windowState,
+            url: withDesktopFrame(windowState.url),
+        })));
         state.nextZ = 10;
         persist();
     };
@@ -206,6 +221,7 @@ export function useDesktopWindows() {
         focusWindow,
         toggleMaximizeWindow,
         updateWindowBounds,
+        updateDesktopScale,
         resetDesktop,
     };
 }

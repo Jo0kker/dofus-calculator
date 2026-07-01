@@ -1,9 +1,43 @@
 import { computed } from 'vue';
 import { usePage } from '@inertiajs/vue3';
 
-export function withDesktopFrame(url) {
+const DESKTOP_SCALE_STORAGE_KEY = 'dofus-calculator.desktop.ui-scale.v1';
+const DEFAULT_DESKTOP_SCALE = 0.9;
+const MIN_DESKTOP_SCALE = 0.75;
+const MAX_DESKTOP_SCALE = 1.1;
+
+export function normalizeDesktopScale(value, fallback = DEFAULT_DESKTOP_SCALE) {
+    const numericValue = Number(value);
+
+    if (!Number.isFinite(numericValue)) {
+        return fallback;
+    }
+
+    return Math.min(Math.max(numericValue, MIN_DESKTOP_SCALE), MAX_DESKTOP_SCALE);
+}
+
+export function getStoredDesktopScale() {
+    if (typeof window === 'undefined') {
+        return DEFAULT_DESKTOP_SCALE;
+    }
+
+    return normalizeDesktopScale(window.localStorage.getItem(DESKTOP_SCALE_STORAGE_KEY));
+}
+
+export function storeDesktopScale(scale) {
+    if (typeof window === 'undefined') {
+        return DEFAULT_DESKTOP_SCALE;
+    }
+
+    const normalizedScale = normalizeDesktopScale(scale);
+    window.localStorage.setItem(DESKTOP_SCALE_STORAGE_KEY, String(normalizedScale));
+
+    return normalizedScale;
+}
+
+export function withDesktopFrame(url, options = {}) {
     if (!url) {
-        return '/?desktop_frame=1';
+        return withDesktopFrame('/', options);
     }
 
     if (url.startsWith('http')) {
@@ -13,6 +47,7 @@ export function withDesktopFrame(url) {
     const [path, query = ''] = url.split('?');
     const params = new URLSearchParams(query);
     params.set('desktop_frame', '1');
+    params.set('desktop_scale', String(normalizeDesktopScale(options.scale ?? getStoredDesktopScale())));
 
     return `${path}?${params.toString()}`;
 }

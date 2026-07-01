@@ -11,7 +11,7 @@ import ServerSelector from '@/Components/ServerSelector.vue';
 import AppFooter from '@/Components/AppFooter.vue';
 import DesktopLayout from '@/Layouts/DesktopLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
-import { useDesktopBridge } from '@/Composables/useDesktopBridge';
+import { normalizeDesktopScale, useDesktopBridge } from '@/Composables/useDesktopBridge';
 
 const props = defineProps({
     title: String,
@@ -26,6 +26,18 @@ const isDesktopMode = computed(() => {
 
     return user?.interface_mode === 'desktop' && !isDesktopFrame.value;
 });
+
+const desktopFrameScale = computed(() => {
+    if (typeof window === 'undefined') {
+        return 0.9;
+    }
+
+    return normalizeDesktopScale(new URLSearchParams(window.location.search).get('desktop_scale'));
+});
+
+const desktopFrameStyle = computed(() => ({
+    '--desktop-frame-scale': desktopFrameScale.value,
+}));
 
 const switchToTeam = (team) => {
     router.put(route('current-team.update'), {
@@ -62,9 +74,9 @@ const openCurrentFrameInDesktopWindow = () => {
         <slot />
     </DesktopLayout>
 
-    <div v-else-if="isDesktopFrame" class="min-h-screen bg-[#eef3f8] text-gray-900">
+    <div v-else-if="isDesktopFrame" class="dark min-h-screen bg-[#111827] text-gray-100" :style="desktopFrameStyle">
         <Head :title="title" />
-        <header v-if="$slots.header" class="flex items-center justify-between gap-4 border-b border-[#9c9c9c] bg-[#ece9d8] px-5 py-3 shadow-[inset_0_1px_0_#fff]">
+        <header v-if="$slots.header" class="flex items-center justify-between gap-4 border-b border-[#374151] bg-[#1f2937] px-5 py-3 text-gray-100 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
             <div class="min-w-0">
                 <slot name="header" />
             </div>
@@ -76,7 +88,7 @@ const openCurrentFrameInDesktopWindow = () => {
                 Ouvrir dans une nouvelle fenêtre
             </button>
         </header>
-        <main>
+        <main class="desktop-frame-content">
             <slot />
         </main>
     </div>
@@ -402,3 +414,15 @@ const openCurrentFrameInDesktopWindow = () => {
         </div>
     </div>
 </template>
+
+<style scoped>
+.desktop-frame-content {
+    background:
+        radial-gradient(circle at 18% 0%, rgb(30 64 175 / 0.22), transparent 26rem),
+        linear-gradient(180deg, #111827 0%, #0f172a 100%);
+    transform: scale(var(--desktop-frame-scale));
+    transform-origin: top left;
+    width: calc(100% / var(--desktop-frame-scale));
+    min-height: calc((100vh - 3.25rem) / var(--desktop-frame-scale));
+}
+</style>

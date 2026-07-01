@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import ServerSelector from '@/Components/ServerSelector.vue';
 import DesktopWindow from '@/Components/Desktop/DesktopWindow.vue';
+import { getStoredDesktopScale } from '@/Composables/useDesktopBridge';
 import { useDesktopWindows } from '@/Composables/useDesktopWindows';
 
 const props = defineProps({
@@ -12,6 +13,14 @@ const props = defineProps({
 
 const page = usePage();
 const isStartMenuOpen = ref(false);
+const desktopScale = ref(getStoredDesktopScale());
+const desktopScaleOptions = [
+    { value: 0.75, label: 'Très compacte (75%)' },
+    { value: 0.85, label: 'Compacte (85%)' },
+    { value: 0.9, label: 'Optimisée (90%)' },
+    { value: 1, label: 'Normale (100%)' },
+    { value: 1.1, label: 'Large (110%)' },
+];
 
 const {
     visibleWindows,
@@ -22,6 +31,7 @@ const {
     focusWindow,
     toggleMaximizeWindow,
     updateWindowBounds,
+    updateDesktopScale,
     resetDesktop,
 } = useDesktopWindows();
 
@@ -46,6 +56,10 @@ const openAppDefinition = (app) => {
         width: app.width,
         height: app.height,
     });
+};
+
+const changeDesktopScale = (event) => {
+    desktopScale.value = updateDesktopScale(event.target.value);
 };
 
 const duplicateCurrentPage = () => {
@@ -155,6 +169,25 @@ onUnmounted(() => {
                 </div>
                 <div class="space-y-3 text-xs">
                     <ServerSelector compact />
+                    <label class="block border border-[#9c9c9c] bg-[#ece9d8] p-2 text-slate-800 shadow-inner">
+                        <span class="mb-1 block font-bold">Taille de l’interface</span>
+                        <select
+                            :value="desktopScale"
+                            class="w-full border border-[#808080] bg-white px-2 py-1 text-xs text-slate-900 shadow-[inset_1px_1px_0_#c0c0c0] focus:border-[#0f63bd] focus:ring-0"
+                            @change="changeDesktopScale"
+                        >
+                            <option
+                                v-for="option in desktopScaleOptions"
+                                :key="option.value"
+                                :value="option.value"
+                            >
+                                {{ option.label }}
+                            </option>
+                        </select>
+                        <span class="mt-1 block text-[11px] text-slate-600">
+                            Réduit le contenu dans les fenêtres pour afficher plus d’informations sur grand écran.
+                        </span>
+                    </label>
                     <div class="border border-[#9c9c9c] bg-[#ece9d8] p-2 text-slate-700 shadow-inner">
                         Double-clique une icône ou passe par Démarrer pour ouvrir plusieurs fenêtres.
                     </div>

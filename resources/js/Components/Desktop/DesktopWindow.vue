@@ -94,7 +94,7 @@ const updateResize = (x, y, w, h) => {
 
             <iframe
                 :src="windowState.url"
-                class="h-full w-full flex-1 border-0 bg-[#eef3f8]"
+                class="h-full w-full flex-1 border-0 bg-[#111827]"
                 :title="windowState.title"
             />
         </section>
