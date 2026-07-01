@@ -25,25 +25,25 @@ export const desktopAppComponents = {
 };
 
 export const desktopAppRegistry = [
-    { id: 'workspace', title: 'Workspace', icon: '🧭', component: 'workspace', width: 760, height: 560, group: 'Pilotage', description: 'Vue d’ensemble, raccourcis et flow de travail.' },
-    { id: 'itemSearch', title: 'Recherche native', icon: '🔎', component: 'itemSearch', width: 760, height: 680, group: 'Items', description: 'Recherche rapide desktop-first.' },
-    { id: 'itemInspector', title: 'Inspecteur item', icon: '📦', component: 'itemInspector', width: 540, height: 680, group: 'Items', description: 'Détail compact, craft, prix et actions.' },
-    { id: 'craftCart', title: 'Panier craft', icon: '🧺', component: 'craftCart', width: 680, height: 620, group: 'Craft', description: 'Prépare une session craft avec quantités.' },
-    { id: 'compare', title: 'Comparateur', icon: '⚖️', component: 'compare', width: 760, height: 560, group: 'Items', description: 'Compare plusieurs items côte à côte.' },
-    { id: 'calculator', title: 'Calculateur', icon: '🧮', component: 'calculator', width: 720, height: 620, group: 'Craft', description: 'Calculateur contextualisé desktop.' },
-    { id: 'priceWatch', title: 'Watchlist prix', icon: '📈', component: 'priceWatch', width: 700, height: 560, group: 'Commerce', description: 'Surveille les opportunités et objectifs de prix.' },
-    { id: 'favorites', title: 'Favoris', icon: '⭐', component: 'favorites', width: 620, height: 560, group: 'Organisation', description: 'Épingles, listes et items récents.' },
-    { id: 'server', title: 'Serveur', icon: '🌍', component: 'server', width: 440, height: 420, group: 'Système', description: 'Contexte serveur du workspace.' },
-    { id: 'quickActions', title: 'Actions rapides', icon: '⚡', component: 'quickActions', width: 500, height: 460, group: 'Système', description: 'Launcher, raccourcis et prochaines actions.' },
-    { id: 'notifications', title: 'Notifications', icon: '🔔', component: 'notifications', width: 520, height: 460, group: 'Système', description: 'Centre d’événements du workspace.' },
+    { id: 'workspace', title: 'Accueil bureau', icon: '🧭', component: 'workspace', width: 760, height: 560, group: 'Pilotage', description: 'Raccourcis et outils principaux' },
+    { id: 'itemSearch', title: 'Recherche d’items', icon: '🔎', component: 'itemSearch', width: 760, height: 680, group: 'Items', description: 'Trouver rapidement un item' },
+    { id: 'itemInspector', title: 'Détail item', icon: '📦', component: 'itemInspector', width: 540, height: 680, group: 'Items', description: 'Infos, craft, prix et actions' },
+    { id: 'craftCart', title: 'Panier craft', icon: '🧺', component: 'craftCart', width: 680, height: 620, group: 'Craft', description: 'Liste des crafts à préparer' },
+    { id: 'compare', title: 'Comparateur', icon: '⚖️', component: 'compare', width: 760, height: 560, group: 'Items', description: 'Comparer plusieurs items' },
+    { id: 'calculator', title: 'Calculateur', icon: '🧮', component: 'calculator', width: 720, height: 620, group: 'Craft', description: 'Calculer coûts et quantités' },
+    { id: 'priceWatch', title: 'Suivi des prix', icon: '📈', component: 'priceWatch', width: 700, height: 560, group: 'Commerce', description: 'Objectifs d’achat et alertes' },
+    { id: 'favorites', title: 'Favoris', icon: '⭐', component: 'favorites', width: 620, height: 560, group: 'Organisation', description: 'Items épinglés et récents' },
+    { id: 'server', title: 'Serveur', icon: '🌍', component: 'server', width: 440, height: 420, group: 'Système', description: 'Choisir le serveur de prix' },
+    { id: 'quickActions', title: 'Actions rapides', icon: '⚡', component: 'quickActions', width: 500, height: 460, group: 'Système', description: 'Ouvrir les outils utiles' },
+    { id: 'notifications', title: 'Notifications', icon: '🔔', component: 'notifications', width: 520, height: 460, group: 'Système', description: 'Messages et alertes' },
 ];
 
 export const legacyDesktopApps = [
-    { id: 'legacy-items', title: 'Items legacy', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Legacy' },
-    { id: 'legacy-calculator', title: 'Calculateur legacy', url: '/calculator', icon: '🧮', width: 1120, height: 720, group: 'Legacy' },
-    { id: 'legacy-favorites', title: 'Favoris legacy', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Legacy' },
-    { id: 'api-tokens', title: 'API Tokens', url: '/api-tokens', icon: '🔑', width: 920, height: 640, group: 'Legacy' },
-    { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Legacy' },
+    { id: 'legacy-items', title: 'Catalogue items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Pages' },
+    { id: 'legacy-calculator', title: 'Page calculateur', url: '/calculator', icon: '🧮', width: 1120, height: 720, group: 'Pages' },
+    { id: 'legacy-favorites', title: 'Page favoris', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Pages' },
+    { id: 'api-tokens', title: 'API Tokens', url: '/api-tokens', icon: '🔑', width: 920, height: 640, group: 'Compte' },
+    { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Compte' },
 ];
 
 export const findDesktopApp = (id) => desktopAppRegistry.find((app) => app.id === id);

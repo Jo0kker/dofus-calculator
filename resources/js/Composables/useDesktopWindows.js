@@ -13,7 +13,7 @@ const DESKTOP_SAFE_MARGIN = 16;
 const defaultWindows = [
     {
         id: 'workspace',
-        title: 'Workspace',
+        title: 'Accueil bureau',
         url: null,
         component: 'workspace',
         payload: {},

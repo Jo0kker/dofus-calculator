@@ -13,7 +13,7 @@ watch(() => props.payload.seedItem, (item) => {
 </script>
 
 <template>
-    <DesktopAppShell title="Watchlist prix" subtitle="Prépare les fenêtres commerce : seuils, suivi, opportunités.">
+    <DesktopAppShell title="Suivi des prix" subtitle="Ajoute les items à surveiller et définis tes objectifs d’achat.">
         <div v-if="!watched.length" class="border border-dashed border-[#9c9c9c] bg-white/60 p-6 text-center text-xs text-slate-500">
             Ajoute un item depuis l’inspecteur pour commencer à surveiller son prix.
         </div>

@@ -212,6 +212,7 @@ onUnmounted(() => {
                 v-for="windowState in visibleWindows"
                 :key="windowState.id"
                 :is-active="windowState.id === activeWindowId"
+                :desktop-scale="desktopScale"
                 :window-state="windowState"
                 @close="closeWindow"
                 @focus="focusWindow"
@@ -247,7 +248,7 @@ onUnmounted(() => {
                             <span class="text-lg">{{ app.icon }}</span>
                             <span>
                                 <span class="block font-bold">{{ app.title }}</span>
-                                <span class="text-[10px] text-slate-600">{{ app.group }} · natif</span>
+                                <span class="text-[10px] text-slate-600">{{ app.description }}</span>
                             </span>
                         </button>
                         <div class="my-1 border-t border-[#9c9c9c]" />
@@ -261,7 +262,7 @@ onUnmounted(() => {
                             <span class="text-lg">{{ app.icon }}</span>
                             <span>
                                 <span class="block font-bold">{{ app.title }}</span>
-                                <span class="text-[10px] text-slate-600">{{ app.group }} · fallback iframe</span>
+                                <span class="text-[10px] text-slate-600">Version complète</span>
                             </span>
                         </button>
                         <div class="my-1 border-t border-[#9c9c9c]" />

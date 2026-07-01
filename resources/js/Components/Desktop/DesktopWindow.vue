@@ -12,6 +12,10 @@ const props = defineProps({
         type: Boolean,
         default: false,
     },
+    desktopScale: {
+        type: Number,
+        default: 0.9,
+    },
 });
 
 const emit = defineEmits([
@@ -122,7 +126,8 @@ const updateResize = (x, y, w, h) => {
                 :is="desktopAppComponents[windowState.component]"
                 v-if="windowState.component && desktopAppComponents[windowState.component]"
                 :payload="windowState.payload || {}"
-                class="min-h-0 flex-1"
+                class="desktop-window__scaled-content min-h-0 flex-1"
+                :style="{ '--desktop-window-scale': desktopScale }"
                 @open-app="(appId, payload) => emit('open-app', appId, payload)"
             />
             <iframe
@@ -148,6 +153,13 @@ const updateResize = (x, y, w, h) => {
 
 .desktop-window-wrapper > .handle {
     z-index: 20;
+}
+
+.desktop-window__scaled-content {
+    transform: scale(var(--desktop-window-scale));
+    transform-origin: top left;
+    width: calc(100% / var(--desktop-window-scale));
+    height: calc(100% / var(--desktop-window-scale));
 }
 
 body.desktop-window-is-interacting .desktop-window-wrapper iframe {

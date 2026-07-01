@@ -11,7 +11,7 @@ watch(() => props.payload.seedItem, (item) => {
 </script>
 
 <template>
-    <DesktopAppShell title="Comparateur" subtitle="Fenêtre native pour comparer plusieurs items côte à côte.">
+    <DesktopAppShell title="Comparateur" subtitle="Compare plusieurs items côte à côte avant de choisir.">
         <div v-if="!compared.length" class="border border-dashed border-[#9c9c9c] bg-white/60 p-6 text-center text-xs text-slate-500">
             Envoie des items depuis l’inspecteur pour les comparer ici.
         </div>

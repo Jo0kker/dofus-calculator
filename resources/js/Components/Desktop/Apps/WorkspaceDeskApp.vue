@@ -8,14 +8,14 @@ const cards = [
     { app: 'craftCart', title: 'Préparer un craft', icon: '🧺', text: 'Centralise les items à crafter, quantités et prochaines actions.' },
     { app: 'compare', title: 'Comparer', icon: '⚖️', text: 'Garde plusieurs items côte à côte pour décider vite.' },
     { app: 'priceWatch', title: 'Surveiller les prix', icon: '📈', text: 'Crée une watchlist pour repérer opportunités et seuils.' },
-    { app: 'quickActions', title: 'Launcher', icon: '⚡', text: 'Raccourcis vers les fenêtres utiles du workspace.' },
+    { app: 'quickActions', title: 'Actions rapides', icon: '⚡', text: 'Ouvre les outils que tu utilises le plus.' },
 ];
 </script>
 
 <template>
     <DesktopAppShell
-        title="Workspace"
-        subtitle="Le hub natif du mode desktop : ouvre des outils spécialisés au lieu d’embarquer les pages classiques."
+        title="Accueil bureau"
+        subtitle="Tout ce qu’il faut pour chercher, comparer et préparer tes crafts."
     >
         <div class="grid gap-3 sm:grid-cols-2">
             <button
@@ -36,8 +36,7 @@ const cards = [
         </div>
 
         <div class="mt-4 border border-[#9c9c9c] bg-[#fff8d8] p-3 text-xs text-slate-700 shadow-inner">
-            <strong>Flow cible :</strong> recherche → inspecteur → comparer / panier craft / watchlist → sauvegarde workspace.
-            Cette couche reste limitée au mode desktop et ne touche pas les pages classiques.
+            <strong>Astuce :</strong> commence par une recherche, puis envoie les items vers le panier, le comparateur ou le suivi des prix.
         </div>
     </DesktopAppShell>
 </template>

@@ -17,7 +17,7 @@ const totalQuantity = computed(() => entries.value.reduce((sum, entry) => sum + 
 </script>
 
 <template>
-    <DesktopAppShell title="Panier craft" subtitle="Fenêtre native pour construire une session craft sans quitter le workspace.">
+    <DesktopAppShell title="Panier craft" subtitle="Garde les items à crafter au même endroit, avec les quantités.">
         <div class="mb-3 flex gap-2">
             <button class="desk-button" type="button" @click="emit('open-app', 'itemSearch')">Ajouter un item</button>
             <button class="desk-button" type="button" @click="emit('open-app', 'calculator', { items: entries })">Calculer tout</button>

@@ -47,7 +47,7 @@ onMounted(fetchItems);
 </script>
 
 <template>
-    <DesktopAppShell title="Recherche native" subtitle="Recherche rapide pensée pour alimenter les autres fenêtres du workspace.">
+    <DesktopAppShell title="Recherche d’items" subtitle="Cherche un item puis ouvre son détail, le panier ou le comparateur.">
         <div class="sticky top-0 z-10 -mx-3 -mt-3 border-b border-[#9c9c9c] bg-[#f3f0df] p-3">
             <div class="flex gap-2">
                 <input
