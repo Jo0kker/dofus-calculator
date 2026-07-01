@@ -17,6 +17,7 @@ const form = useForm({
     _method: 'PUT',
     name: props.user.name,
     email: props.user.email,
+    interface_mode: props.user.interface_mode || 'classic',
     photo: null,
 });
 
@@ -174,6 +175,23 @@ const clearPhotoFileInput = () => {
                         A new verification link has been sent to your email address.
                     </div>
                 </div>
+            </div>
+
+            <!-- Interface Mode -->
+            <div class="col-span-6 sm:col-span-4">
+                <InputLabel for="interface_mode" value="Template du site" />
+                <select
+                    id="interface_mode"
+                    v-model="form.interface_mode"
+                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                >
+                    <option value="classic">Classique</option>
+                    <option value="desktop">Bureau multi-fenêtres</option>
+                </select>
+                <p class="mt-2 text-sm text-gray-500">
+                    Le mode bureau permet d'ouvrir plusieurs pages/items dans des fenêtres internes, sans multiplier les onglets du navigateur.
+                </p>
+                <InputError :message="form.errors.interface_mode" class="mt-2" />
             </div>
         </template>
 

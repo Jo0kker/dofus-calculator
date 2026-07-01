@@ -152,12 +152,13 @@
                                             </span>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-center text-sm font-medium">
-                                            <Link 
-                                                :href="route('items.show', result.item.id)"
+                                            <button
+                                                type="button"
                                                 class="text-indigo-600 hover:text-indigo-900"
+                                                @click="openItemDetails(result.item)"
                                             >
                                                 Détails
-                                            </Link>
+                                            </button>
                                         </td>
                                     </tr>
                                 </tbody>
@@ -173,9 +174,10 @@
 <script setup>
 import { ref, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
-import { Link, Head } from '@inertiajs/vue3';
+import { Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import { useDesktopBridge } from '@/Composables/useDesktopBridge';
 
 const props = defineProps({
     profitableRecipes: Array,
@@ -184,6 +186,7 @@ const props = defineProps({
 });
 
 const { selectedServer, selectedServerId } = useServerSelection();
+const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
 const filters = ref({
     profession: props.filters?.profession || '',
     min_level: props.filters?.min_level || '',
@@ -200,6 +203,22 @@ const applyFilters = () => {
         preserveState: true,
         preserveScroll: true,
     });
+};
+
+const openItemDetails = (item) => {
+    const itemUrl = route('items.show', item.id);
+
+    if (isDesktopFrame.value && openDesktopWindow({
+        id: `item-${item.id}`,
+        title: item.name,
+        url: itemUrl,
+        width: 980,
+        height: 720,
+    })) {
+        return;
+    }
+
+    router.visit(itemUrl);
 };
 
 const formatNumber = (num) => {

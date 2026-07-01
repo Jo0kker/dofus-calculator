@@ -34,6 +34,7 @@ class User extends Authenticatable
         'password',
         'server_id',
         'role',
+        'interface_mode',
     ];
 
     /**

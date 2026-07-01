@@ -175,6 +175,7 @@ import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { useDesktopBridge } from '@/Composables/useDesktopBridge';
 
 const props = defineProps({
     items: Object,
@@ -188,6 +189,8 @@ const filters = ref({
     min_level: props.filters?.min_level || '',
     max_level: props.filters?.max_level || '',
 });
+
+const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
 
 let searchTimeout = null;
 
@@ -206,6 +209,18 @@ const applyFilters = () => {
 };
 
 const viewItem = (item) => {
-    router.visit(route('items.show', item.id));
+    const itemUrl = route('items.show', item.id);
+
+    if (isDesktopFrame.value && openDesktopWindow({
+        id: `item-${item.id}`,
+        title: item.name,
+        url: itemUrl,
+        width: 980,
+        height: 720,
+    })) {
+        return;
+    }
+
+    router.visit(itemUrl);
 };
 </script>

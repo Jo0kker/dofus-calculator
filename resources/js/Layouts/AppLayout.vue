@@ -1,6 +1,6 @@
 <script setup>
-import { ref } from 'vue';
-import { Head, Link, router } from '@inertiajs/vue3';
+import { computed, ref } from 'vue';
+import { Head, Link, router, usePage } from '@inertiajs/vue3';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import Banner from '@/Components/Banner.vue';
 import Dropdown from '@/Components/Dropdown.vue';
@@ -9,13 +9,23 @@ import NavLink from '@/Components/NavLink.vue';
 import ResponsiveNavLink from '@/Components/ResponsiveNavLink.vue';
 import ServerSelector from '@/Components/ServerSelector.vue';
 import AppFooter from '@/Components/AppFooter.vue';
+import DesktopLayout from '@/Layouts/DesktopLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import { useDesktopBridge } from '@/Composables/useDesktopBridge';
 
-defineProps({
+const props = defineProps({
     title: String,
 });
 
 const showingNavigationDropdown = ref(false);
+const page = usePage();
+const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
+
+const isDesktopMode = computed(() => {
+    const user = page.props.auth?.user;
+
+    return user?.interface_mode === 'desktop' && !isDesktopFrame.value;
+});
 
 const switchToTeam = (team) => {
     router.put(route('current-team.update'), {
@@ -28,10 +38,50 @@ const switchToTeam = (team) => {
 const logout = () => {
     router.post(route('logout'));
 };
+
+const openCurrentFrameInDesktopWindow = () => {
+    if (typeof window === 'undefined') {
+        return;
+    }
+
+    openDesktopWindow({
+        title: props.title || document.title || 'Fenêtre',
+        url: window.location.pathname + window.location.search,
+        width: 980,
+        height: 680,
+    });
+};
 </script>
 
 <template>
-    <div>
+    <DesktopLayout v-if="isDesktopMode" :title="title">
+        <template v-if="$slots.header" #header>
+            <slot name="header" />
+        </template>
+
+        <slot />
+    </DesktopLayout>
+
+    <div v-else-if="isDesktopFrame" class="min-h-screen bg-gray-100 text-gray-900">
+        <Head :title="title" />
+        <header v-if="$slots.header" class="flex items-center justify-between gap-4 border-b border-gray-200 bg-white px-6 py-4 shadow-sm">
+            <div class="min-w-0">
+                <slot name="header" />
+            </div>
+            <button
+                type="button"
+                class="shrink-0 rounded-lg bg-slate-900 px-3 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+                @click="openCurrentFrameInDesktopWindow"
+            >
+                Ouvrir dans une nouvelle fenêtre
+            </button>
+        </header>
+        <main>
+            <slot />
+        </main>
+    </div>
+
+    <div v-else>
         <Head :title="title" />
 
         <Banner />

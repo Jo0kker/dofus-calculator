@@ -30,19 +30,19 @@
                             <!-- Item Header -->
                             <div class="flex items-start justify-between mb-4">
                                 <div class="flex items-center space-x-4">
-                                    <Link :href="route('items.show', favorite.item.id)">
+                                    <button type="button" @click="openItemDetails(favorite.item)">
                                         <img 
                                             v-if="favorite.item.image_url" 
                                             :src="favorite.item.image_url" 
                                             :alt="favorite.item.name"
                                             class="w-16 h-16 object-contain hover:opacity-80 transition-opacity"
                                         />
-                                    </Link>
+                                    </button>
                                     <div>
                                         <h2 class="text-xl font-bold text-gray-900">
-                                            <Link :href="route('items.show', favorite.item.id)" class="hover:text-blue-600 transition-colors">
+                                            <button type="button" class="hover:text-blue-600 transition-colors" @click="openItemDetails(favorite.item)">
                                                 {{ favorite.item.name }}
-                                            </Link>
+                                            </button>
                                         </h2>
                                         <p v-if="favorite.item.level" class="text-sm text-gray-500">
                                             Niveau {{ favorite.item.level }}
@@ -96,6 +96,7 @@ import { ref } from 'vue';
 import { router, Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import { useDesktopBridge } from '@/Composables/useDesktopBridge';
 
 // Composant Craft Tree
 const CraftTree = {
@@ -158,6 +159,23 @@ const props = defineProps({
 });
 
 const { selectedServer, selectedServerId } = useServerSelection();
+const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
+
+const openItemDetails = (item) => {
+    const itemUrl = route('items.show', item.id);
+
+    if (isDesktopFrame.value && openDesktopWindow({
+        id: `item-${item.id}`,
+        title: item.name,
+        url: itemUrl,
+        width: 980,
+        height: 720,
+    })) {
+        return;
+    }
+
+    router.visit(itemUrl);
+};
 
 const formatNumber = (num) => {
     return new Intl.NumberFormat('fr-FR').format(Math.round(num));

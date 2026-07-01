@@ -1892,6 +1892,11 @@ vite@^7.0.4:
   optionalDependencies:
     fsevents "~2.3.3"
 
+vue-draggable-resizable@3.0.0:
+  version "3.0.0"
+  resolved "https://registry.yarnpkg.com/vue-draggable-resizable/-/vue-draggable-resizable-3.0.0.tgz#82146819bfff8007d66a001d39a3227253d5d3f2"
+  integrity sha512-kABSggcXPoDB8dOTVE09ZkccxiMdNDUaLl7STTeghsFE3o+mk653iumrkmjKLfIBA/w5ZXWJmarBqoqsmWLzEg==
+
 vue@^3.3.13:
   version "3.5.18"
   resolved "https://registry.yarnpkg.com/vue/-/vue-3.5.18.tgz#3d622425ad1391a2b0138323211ec784f4415686"
