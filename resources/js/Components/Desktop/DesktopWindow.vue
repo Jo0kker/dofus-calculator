@@ -17,6 +17,22 @@ const emit = defineEmits([
     'update-bounds',
 ]);
 
+const startInteraction = () => {
+    emit('focus', props.windowState.id);
+
+    if (typeof document !== 'undefined') {
+        document.body.classList.add('desktop-window-is-interacting');
+    }
+
+    return true;
+};
+
+const stopInteraction = () => {
+    if (typeof document !== 'undefined') {
+        document.body.classList.remove('desktop-window-is-interacting');
+    }
+};
+
 const updateDrag = (x, y) => {
     emit('update-bounds', props.windowState.id, { x, y });
 };
@@ -39,11 +55,15 @@ const updateResize = (x, y, w, h) => {
         :resizable="!windowState.maximized"
         :min-width="420"
         :min-height="280"
+        :on-drag-start="startInteraction"
+        :on-resize-start="startInteraction"
         drag-handle=".desktop-window__titlebar"
         class-name="desktop-window-wrapper"
         @activated="emit('focus', windowState.id)"
         @dragging="updateDrag"
+        @drag-stop="stopInteraction"
         @resizing="updateResize"
+        @resize-stop="stopInteraction"
     >
         <section
             class="flex h-full flex-col overflow-hidden border border-[#083f88] bg-[#d4d0c8] text-slate-950 shadow-[8px_8px_0_rgba(0,0,0,0.28)]"
@@ -108,6 +128,10 @@ const updateResize = (x, y, w, h) => {
 
 .desktop-window-wrapper > .handle {
     z-index: 20;
+}
+
+body.desktop-window-is-interacting .desktop-window-wrapper iframe {
+    pointer-events: none;
 }
 
 .window-control {

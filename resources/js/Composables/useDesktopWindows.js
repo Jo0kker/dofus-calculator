@@ -59,9 +59,12 @@ const readStoredWindows = () => {
     }
 };
 
+const initialWindows = readStoredWindows();
+const initialNextZ = Math.max(10, ...initialWindows.map((windowState) => Number(windowState.z) || 0)) + 1;
+
 const state = reactive({
-    windows: readStoredWindows(),
-    nextZ: 10,
+    windows: initialWindows,
+    nextZ: initialNextZ,
 });
 
 const persist = () => {
