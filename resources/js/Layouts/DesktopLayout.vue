@@ -4,6 +4,7 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ApplicationMark from '@/Components/ApplicationMark.vue';
 import ServerSelector from '@/Components/ServerSelector.vue';
 import DesktopWindow from '@/Components/Desktop/DesktopWindow.vue';
+import { desktopAppRegistry, findDesktopApp, legacyDesktopApps } from '@/Components/Desktop/desktopApps';
 import { getStoredDesktopScale } from '@/Composables/useDesktopBridge';
 import { useDesktopWindows } from '@/Composables/useDesktopWindows';
 
@@ -25,6 +26,7 @@ const desktopScaleOptions = [
 const {
     visibleWindows,
     minimizedWindows,
+    openDesktopApp,
     openRouteWindow,
     closeWindow,
     minimizeWindow,
@@ -42,25 +44,27 @@ const activeWindowId = computed(() => {
     return orderedWindows[0]?.id;
 });
 
-const apps = [
-    { id: 'items', title: 'Recherche items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Applications' },
-    { id: 'calculator', title: 'Calculateur', url: '/calculator', icon: '🧮', width: 1120, height: 720, group: 'Applications' },
-    { id: 'favorites', title: 'Favoris', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Applications' },
-    { id: 'api-tokens', title: 'API Tokens', url: '/api-tokens', icon: '🔑', width: 920, height: 640, group: 'Outils' },
-    { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Système' },
-];
+const desktopApps = desktopAppRegistry;
+const legacyApps = legacyDesktopApps;
+const desktopIconApps = desktopApps.slice(0, 8);
 
-const openApp = (title, url, options = {}) => {
-    openRouteWindow(title, url, options);
+const openNativeApp = (appId, payload = {}) => {
+    const app = findDesktopApp(appId);
+    if (!app) {
+        return;
+    }
+
+    openDesktopApp(app, payload || {});
     isStartMenuOpen.value = false;
 };
 
-const openAppDefinition = (app) => {
-    openApp(app.title, app.url, {
+const openLegacyApp = (app) => {
+    openRouteWindow(app.title, app.url, {
         id: app.id,
         width: app.width,
         height: app.height,
     });
+    isStartMenuOpen.value = false;
 };
 
 const changeDesktopScale = (event) => {
@@ -72,7 +76,7 @@ const duplicateCurrentPage = () => {
         return;
     }
 
-    openApp(props.title || 'Page courante', `${window.location.pathname}${window.location.search}`, {
+    openRouteWindow(props.title || 'Page courante', `${window.location.pathname}${window.location.search}`, {
         width: 980,
         height: 680,
     });
@@ -94,6 +98,11 @@ const switchToClassic = () => {
 };
 
 const handleDesktopWindowPayload = (payload) => {
+    if (payload.component || payload.appId) {
+        openNativeApp(payload.appId || payload.component, payload);
+        return;
+    }
+
     openRouteWindow(payload.title || 'Fenêtre', payload.url || '/', {
         id: payload.id,
         width: payload.width || 980,
@@ -156,11 +165,11 @@ onUnmounted(() => {
         <main class="absolute inset-x-0 bottom-10 top-8 z-10">
             <section class="absolute left-5 top-5 grid w-24 grid-cols-1 gap-4">
                 <button
-                    v-for="app in apps"
+                    v-for="app in desktopIconApps"
                     :key="app.id"
                     type="button"
                     class="desktop-icon"
-                    @dblclick="openAppDefinition(app)"
+                    @dblclick="openNativeApp(app.id)"
                     @click="focusWindow(app.id)"
                 >
                     <span class="desktop-icon__glyph">{{ app.icon }}</span>
@@ -209,6 +218,7 @@ onUnmounted(() => {
                 @minimize="minimizeWindow"
                 @toggle-maximize="toggleMaximizeWindow"
                 @update-bounds="updateWindowBounds"
+                @open-app="openNativeApp"
             />
         </main>
 
@@ -228,16 +238,30 @@ onUnmounted(() => {
                     <div class="start-menu__rail">DOFUS</div>
                     <div class="flex-1 py-1">
                         <button
-                            v-for="app in apps"
+                            v-for="app in desktopApps"
                             :key="app.id"
                             type="button"
                             class="start-menu__item"
-                            @click="openAppDefinition(app)"
+                            @click="openNativeApp(app.id)"
                         >
                             <span class="text-lg">{{ app.icon }}</span>
                             <span>
                                 <span class="block font-bold">{{ app.title }}</span>
-                                <span class="text-[10px] text-slate-600">{{ app.group }}</span>
+                                <span class="text-[10px] text-slate-600">{{ app.group }} · natif</span>
+                            </span>
+                        </button>
+                        <div class="my-1 border-t border-[#9c9c9c]" />
+                        <button
+                            v-for="app in legacyApps"
+                            :key="app.id"
+                            type="button"
+                            class="start-menu__item opacity-80"
+                            @click="openLegacyApp(app)"
+                        >
+                            <span class="text-lg">{{ app.icon }}</span>
+                            <span>
+                                <span class="block font-bold">{{ app.title }}</span>
+                                <span class="text-[10px] text-slate-600">{{ app.group }} · fallback iframe</span>
                             </span>
                         </button>
                         <div class="my-1 border-t border-[#9c9c9c]" />

@@ -1,6 +1,7 @@
 <script setup>
 import VueDraggableResizable from 'vue-draggable-resizable';
 import 'vue-draggable-resizable/style.css';
+import { desktopAppComponents } from '@/Components/Desktop/desktopApps';
 
 const props = defineProps({
     windowState: {
@@ -19,6 +20,7 @@ const emit = defineEmits([
     'minimize',
     'toggle-maximize',
     'update-bounds',
+    'open-app',
 ]);
 
 const startInteraction = () => {
@@ -116,11 +118,22 @@ const updateResize = (x, y, w, h) => {
                 <span>Aide</span>
             </div>
 
+            <component
+                :is="desktopAppComponents[windowState.component]"
+                v-if="windowState.component && desktopAppComponents[windowState.component]"
+                :payload="windowState.payload || {}"
+                class="min-h-0 flex-1"
+                @open-app="(appId, payload) => emit('open-app', appId, payload)"
+            />
             <iframe
+                v-else-if="windowState.url"
                 :src="windowState.url"
                 class="h-full w-full flex-1 border-0 bg-[#111827]"
                 :title="windowState.title"
             />
+            <div v-else class="grid h-full flex-1 place-items-center bg-[#f3f0df] p-6 text-center text-xs text-slate-600">
+                Fenêtre desktop sans application associée.
+            </div>
         </section>
     </VueDraggableResizable>
 </template>
@@ -157,6 +170,24 @@ body.desktop-window-is-interacting .desktop-window-wrapper iframe {
 }
 
 .window-control:hover {
+    filter: brightness(1.05);
+}
+
+.desk-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid #4d4d4d;
+    background: linear-gradient(#ffffff, #c9c4ba);
+    padding: 0.25rem 0.5rem;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    color: #111827;
+    box-shadow: inset 1px 1px 0 #ffffff, inset -1px -1px 0 #7c7c7c;
+}
+
+.desk-button:hover {
     filter: brightness(1.05);
 }
 </style>

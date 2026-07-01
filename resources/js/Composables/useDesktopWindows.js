@@ -12,9 +12,11 @@ const DESKTOP_SAFE_MARGIN = 16;
 
 const defaultWindows = [
     {
-        id: 'items',
-        title: 'Items',
-        url: '/items?desktop_frame=1',
+        id: 'workspace',
+        title: 'Workspace',
+        url: null,
+        component: 'workspace',
+        payload: {},
         x: 40,
         y: 40,
         w: 980,
@@ -55,7 +57,7 @@ const normalizeWindowBounds = (windowState) => {
 const buildDefaultWindows = () => defaultWindows.map((windowState) => ({
     ...windowState,
     ...normalizeWindowBounds(windowState),
-    url: normalizeDesktopUrl(windowState.url),
+    url: windowState.url ? normalizeDesktopUrl(windowState.url) : null,
 }));
 
 const readStoredWindows = () => {
@@ -85,7 +87,9 @@ const readStoredWindows = () => {
             return {
                 id: String(windowState.id || `window-${index}`),
                 title: String(windowState.title || 'Fenêtre'),
-                url: normalizeDesktopUrl(String(windowState.url || '/?desktop_frame=1')),
+                url: windowState.url ? normalizeDesktopUrl(String(windowState.url)) : null,
+                component: windowState.component || null,
+                payload: windowState.payload || {},
                 ...bounds,
                 z: Number(windowState.z ?? index + 1),
                 minimized: Boolean(windowState.minimized),
@@ -139,11 +143,13 @@ export function useDesktopWindows() {
         persist();
     };
 
-    const openWindow = ({ id, title, url, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT }) => {
+    const openWindow = ({ id, title, url = null, component = null, payload = {}, width = DEFAULT_WIDTH, height = DEFAULT_HEIGHT }) => {
         const existingWindow = state.windows.find((candidate) => candidate.id === id);
         if (existingWindow) {
             existingWindow.title = title;
-            existingWindow.url = normalizeDesktopUrl(url);
+            existingWindow.url = url ? normalizeDesktopUrl(url) : null;
+            existingWindow.component = component;
+            existingWindow.payload = payload;
             Object.assign(existingWindow, normalizeWindowBounds(existingWindow));
             existingWindow.minimized = false;
             focusWindow(existingWindow.id);
@@ -161,7 +167,9 @@ export function useDesktopWindows() {
         const windowState = {
             id,
             title,
-            url: normalizeDesktopUrl(url),
+            url: url ? normalizeDesktopUrl(url) : null,
+            component,
+            payload,
             ...bounds,
             z: state.nextZ++,
             minimized: false,
@@ -180,6 +188,15 @@ export function useDesktopWindows() {
         url,
         width: options.width,
         height: options.height,
+    });
+
+    const openDesktopApp = (app, payload = {}) => openWindow({
+        id: payload.windowId || app.windowId || app.id,
+        title: payload.title || app.title,
+        component: app.component,
+        payload,
+        width: payload.width || app.width,
+        height: payload.height || app.height,
     });
 
     const closeWindow = (id) => {
@@ -244,7 +261,9 @@ export function useDesktopWindows() {
         const normalizedScale = storeDesktopScale(scale);
 
         state.windows.forEach((windowState) => {
-            windowState.url = withDesktopFrame(windowState.url, { scale: normalizedScale });
+            if (windowState.url) {
+                windowState.url = withDesktopFrame(windowState.url, { scale: normalizedScale });
+            }
         });
 
         persist();
@@ -263,6 +282,7 @@ export function useDesktopWindows() {
         visibleWindows,
         minimizedWindows,
         openWindow,
+        openDesktopApp,
         openRouteWindow,
         closeWindow,
         minimizeWindow,

@@ -9,6 +9,7 @@ use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\ApiTokenController;
+use App\Http\Controllers\Desktop\DesktopItemController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -30,6 +31,12 @@ Route::middleware([
     'verified',
 ])->group(function () {
     
+    // Desktop-only native workspace API (used only by the desktop interface mode).
+    Route::prefix('desktop/api')->name('desktop.api.')->group(function () {
+        Route::get('/items', [DesktopItemController::class, 'index'])->name('items.index');
+        Route::get('/items/{item}', [DesktopItemController::class, 'show'])->name('items.show');
+    });
+
     // Calculator routes
     Route::get('/calculator', [CalculatorController::class, 'index'])->name('calculator.index');
     Route::get('/calculator/recipe/{recipe}', [CalculatorController::class, 'show'])->name('calculator.show');
