@@ -127,6 +127,9 @@ const updateResize = (x, y, w, h) => {
 
 <style>
 .desktop-window-wrapper {
+    position: absolute;
+    box-sizing: border-box;
+    touch-action: none;
     border: 0 !important;
 }
 
