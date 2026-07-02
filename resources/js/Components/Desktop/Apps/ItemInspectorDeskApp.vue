@@ -20,6 +20,10 @@ const item = ref(null);
 const priceInput = ref('');
 const priceSaving = ref(false);
 const priceMessage = ref('');
+const copyMessage = ref('');
+const resourcePriceInputs = ref({});
+const resourcePriceSaving = ref({});
+const resourcePriceMessage = ref({});
 const reportComment = ref('');
 const reportSaving = ref(false);
 const reportMessage = ref('');
@@ -99,13 +103,18 @@ const craftVerdict = computed(() => {
 });
 
 const resourceRows = computed(() => recipeIngredients.value.map((ingredient) => {
-    const quantity = Number(ingredient.pivot?.quantity || ingredient.quantity || 1) * Number(craftQuantity.value || 1);
+    const baseQuantity = Number(ingredient.pivot?.quantity || ingredient.quantity || 1);
+    const quantity = baseQuantity * Number(craftQuantity.value || 1);
     const price = findPriceForServer(ingredient.prices || []);
 
     return {
         id: ingredient.id,
+        ingredient,
         name: ingredient.name,
         image_url: ingredient.image_url,
+        type: ingredient.type,
+        level: ingredient.level,
+        baseQuantity,
         quantity,
         unitPrice: price ? Number(price.price) : null,
         total: price ? Number(price.price) * quantity : null,
@@ -114,13 +123,40 @@ const resourceRows = computed(() => recipeIngredients.value.map((ingredient) => 
 
 const resourcesTotal = computed(() => resourceRows.value.reduce((sum, row) => sum + (row.total || 0), 0));
 
-const copyResources = async () => {
-    const text = resourceRows.value
-        .map(row => `${row.quantity}x ${row.name}${row.total ? ` — ${formatNumber(row.total)} K` : ''}`)
-        .join('\n');
+const copyItemName = async (name) => {
+    await navigator.clipboard?.writeText(name);
+    copyMessage.value = `Nom copié : ${name}`;
+};
 
-    await navigator.clipboard?.writeText(text);
-    priceMessage.value = 'Liste copiée.';
+const openIngredient = (ingredient) => {
+    emit('open-app', 'itemInspector', {
+        windowId: `item-${ingredient.id}`,
+        title: ingredient.name,
+        itemId: ingredient.id,
+    });
+};
+
+const saveResourcePrice = async (ingredient) => {
+    const value = resourcePriceInputs.value[ingredient.id];
+    if (!ingredient?.id || !selectedServerId.value || !value) return;
+
+    resourcePriceSaving.value[ingredient.id] = true;
+    resourcePriceMessage.value[ingredient.id] = '';
+
+    try {
+        await axios.post('/prices', {
+            item_id: ingredient.id,
+            server_id: selectedServerId.value,
+            price: value,
+        });
+        resourcePriceInputs.value[ingredient.id] = '';
+        resourcePriceMessage.value[ingredient.id] = 'Prix OK';
+        await loadItem();
+    } catch {
+        resourcePriceMessage.value[ingredient.id] = 'Erreur prix';
+    } finally {
+        resourcePriceSaving.value[ingredient.id] = false;
+    }
 };
 
 const initializeIncludedIngredients = () => {
@@ -163,6 +199,7 @@ const loadItem = async () => {
     loading.value = true;
     priceMessage.value = '';
     reportMessage.value = '';
+    copyMessage.value = '';
 
     try {
         const { data } = await axios.get(`/desktop/api/items/${props.payload.itemId}`);
@@ -233,8 +270,12 @@ onMounted(loadItem);
                         <img v-if="item.image_url" :src="item.image_url" :alt="item.name" class="h-16 w-16 shrink-0 object-contain" />
                         <div v-else class="grid h-16 w-16 shrink-0 place-items-center border border-[#9c9c9c] bg-[#ece9d8] text-2xl">📦</div>
                         <div class="min-w-0 flex-1">
-                            <h3 class="text-lg font-black text-slate-950">{{ item.name }}</h3>
+                            <div class="flex items-start justify-between gap-2">
+                                <h3 class="min-w-0 flex-1 text-lg font-black text-slate-950">{{ item.name }}</h3>
+                                <button class="desk-button shrink-0 px-2 py-1 text-[11px]" type="button" @click="copyItemName(item.name)">Copier nom</button>
+                            </div>
                             <p class="text-xs text-slate-600">Niv. {{ item.level || '—' }} · {{ item.type || 'Type inconnu' }}</p>
+                            <p v-if="copyMessage" class="mt-1 text-[11px] font-bold text-[#0b3f88]">{{ copyMessage }}</p>
                             <p v-if="descriptionText" class="mt-2 whitespace-pre-line text-xs leading-relaxed text-slate-700">{{ descriptionText }}</p>
                         </div>
                     </div>
@@ -300,21 +341,32 @@ onMounted(loadItem);
                                     {{ excludedCount ? 'Tout cocher' : 'Tout décocher' }}
                                 </button>
                             </div>
-                            <label v-for="row in manualRows" :key="row.ingredient.id" class="flex items-center gap-2 border-t border-slate-100 py-2 text-xs">
-                                <input v-model="includedIngredients[row.ingredient.id]" type="checkbox" class="rounded border-gray-300" />
-                                <img v-if="row.ingredient.image_url" :src="row.ingredient.image_url" :alt="row.ingredient.name" class="h-5 w-5 object-contain" />
-                                <span class="min-w-0 flex-1 truncate" :class="!row.included ? 'text-slate-400 line-through' : ''">x{{ row.quantity }} {{ row.ingredient.name }}</span>
-                                <strong :class="row.missing ? 'text-red-600' : 'text-slate-900'">
-                                    {{ row.unitPrice ? `${formatNumber(row.total)} K` : 'Prix manquant' }}
-                                </strong>
-                            </label>
+                            <div v-for="row in manualRows" :key="row.ingredient.id" class="grid gap-2 border-t border-slate-100 py-2 text-xs sm:grid-cols-[auto_minmax(0,1fr)_auto]">
+                                <input v-model="includedIngredients[row.ingredient.id]" type="checkbox" class="mt-2 rounded border-gray-300" />
+                                <div class="flex min-w-0 items-center gap-2">
+                                    <img v-if="row.ingredient.image_url" :src="row.ingredient.image_url" :alt="row.ingredient.name" class="h-8 w-8 object-contain" />
+                                    <div class="min-w-0">
+                                        <button type="button" class="block max-w-full truncate text-left font-black text-[#0b3f88] hover:underline" :class="!row.included ? 'text-slate-400 line-through' : ''" @click="openIngredient(row.ingredient)">
+                                            x{{ row.quantity }} {{ row.ingredient.name }}
+                                        </button>
+                                        <span class="text-[11px] text-slate-500">{{ row.ingredient.type || 'Item' }} · Niv. {{ row.ingredient.level || '—' }}</span>
+                                    </div>
+                                </div>
+                                <div class="flex items-center justify-end gap-1">
+                                    <strong :class="row.missing ? 'text-red-600' : 'text-slate-900'">{{ row.unitPrice ? `${formatNumber(row.total)} K` : 'Prix manquant' }}</strong>
+                                    <button type="button" class="desk-button px-2 py-1 text-[11px]" @click="copyItemName(row.ingredient.name)">Copier</button>
+                                    <button type="button" class="desk-button px-2 py-1 text-[11px]" @click="openIngredient(row.ingredient)">Ouvrir</button>
+                                </div>
+                            </div>
                         </div>
 
                         <div v-else-if="optimizedCalculation?.craftTree?.ingredients" class="border border-[#d1d1d1] bg-white p-2">
                             <strong class="text-xs uppercase text-[#0b3f88]">Décision automatique</strong>
-                            <div v-for="node in optimizedCalculation.craftTree.ingredients" :key="node.id" class="mt-2 flex items-center justify-between border-t border-slate-100 pt-2 text-xs">
-                                <span class="truncate">{{ node.quantity || node.pivot?.quantity || 1 }}x {{ node.name }}</span>
+                            <div v-for="node in optimizedCalculation.craftTree.ingredients" :key="node.id" class="mt-2 flex items-center justify-between gap-2 border-t border-slate-100 pt-2 text-xs">
+                                <button type="button" class="min-w-0 flex-1 truncate text-left font-black text-[#0b3f88] hover:underline" @click="openIngredient(node)">{{ node.quantity || node.pivot?.quantity || 1 }}x {{ node.name }}</button>
                                 <strong>{{ node.cost ? `${formatNumber(node.cost)} K` : (node.price ? `${formatNumber(node.price)} K` : 'À calculer') }}</strong>
+                                <button type="button" class="desk-button px-2 py-1 text-[11px]" @click="copyItemName(node.name)">Copier</button>
+                                <button type="button" class="desk-button px-2 py-1 text-[11px]" @click="openIngredient(node)">Ouvrir</button>
                             </div>
                         </div>
                     </div>
@@ -368,19 +420,32 @@ onMounted(loadItem);
                         <span class="text-xs font-black uppercase tracking-wide">Ressources</span>
                         <input v-model.number="craftQuantity" type="number" min="1" class="w-20 border-white/40 bg-white text-xs text-slate-900" />
                     </div>
-                    <div class="max-h-64 overflow-auto p-2">
-                        <div v-for="row in resourceRows" :key="row.id" class="flex items-center gap-2 border-b border-slate-100 py-2 text-xs">
-                            <img v-if="row.image_url" :src="row.image_url" :alt="row.name" class="h-5 w-5 object-contain" />
-                            <span class="min-w-0 flex-1 truncate">x{{ row.quantity }} {{ row.name }}</span>
-                            <strong>{{ row.total ? `${formatNumber(row.total)} K` : '—' }}</strong>
-                        </div>
+                    <div class="max-h-80 overflow-auto p-2">
+                        <article v-for="row in resourceRows" :key="row.id" class="border-b border-slate-100 py-2 text-xs">
+                            <div class="flex items-start gap-2">
+                                <img v-if="row.image_url" :src="row.image_url" :alt="row.name" class="h-8 w-8 object-contain" />
+                                <div class="min-w-0 flex-1">
+                                    <button type="button" class="block max-w-full truncate text-left font-black text-[#0b3f88] hover:underline" @click="openIngredient(row.ingredient)">x{{ row.quantity }} {{ row.name }}</button>
+                                    <span class="text-[11px] text-slate-500">{{ row.type || 'Item' }} · Niv. {{ row.level || '—' }} · unité {{ row.unitPrice ? `${formatNumber(row.unitPrice)} K` : '—' }}</span>
+                                </div>
+                                <strong>{{ row.total ? `${formatNumber(row.total)} K` : '—' }}</strong>
+                            </div>
+                            <div class="mt-2 grid gap-1 sm:grid-cols-[1fr_auto_auto]">
+                                <input v-model="resourcePriceInputs[row.id]" type="number" min="1" class="min-w-0 border-[#9c9c9c] text-xs" :placeholder="row.unitPrice ? 'Modifier prix unitaire' : 'Ajouter prix unitaire'" />
+                                <button type="button" class="desk-button px-2 py-1 text-[11px]" :disabled="resourcePriceSaving[row.id]" @click="saveResourcePrice(row.ingredient)">{{ resourcePriceSaving[row.id] ? '…' : 'Prix' }}</button>
+                                <button type="button" class="desk-button px-2 py-1 text-[11px]" @click="copyItemName(row.name)">Copier nom</button>
+                            </div>
+                            <div class="mt-1 flex gap-1">
+                                <button type="button" class="desk-button px-2 py-1 text-[11px]" @click="openIngredient(row.ingredient)">Ouvrir fiche ressource</button>
+                                <span v-if="resourcePriceMessage[row.id]" class="px-1 py-1 text-[11px] font-bold text-[#0b3f88]">{{ resourcePriceMessage[row.id] }}</span>
+                            </div>
+                        </article>
                     </div>
                     <div class="border-t border-[#d1d1d1] bg-[#f8f8f0] p-2 text-xs">
                         <div class="flex justify-between font-black">
                             <span>Total estimé</span>
                             <span>{{ formatNumber(resourcesTotal) }} K</span>
                         </div>
-                        <button type="button" class="desk-button mt-2 w-full py-2" @click="copyResources">Copier la liste</button>
                     </div>
                 </section>
             </aside>
