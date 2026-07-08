@@ -4,18 +4,17 @@ import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
 const emit = defineEmits(['open-app']);
 
 const cards = [
-    { app: 'itemSearch', title: 'Chercher un item', icon: '🔎', text: 'Trouve, inspecte, compare et ajoute au panier sans quitter le bureau.' },
-    { app: 'craftCart', title: 'Préparer un craft', icon: '🧺', text: 'Centralise les items à crafter, quantités et prochaines actions.' },
-    { app: 'compare', title: 'Comparer', icon: '⚖️', text: 'Garde plusieurs items côte à côte pour décider vite.' },
-    { app: 'priceWatch', title: 'Surveiller les prix', icon: '📈', text: 'Crée une watchlist pour repérer opportunités et seuils.' },
-    { app: 'quickActions', title: 'Actions rapides', icon: '⚡', text: 'Ouvre les outils que tu utilises le plus.' },
+    { app: 'itemSearch', title: 'Chercher un item', icon: '🔎', text: 'Ouvre une fiche item avec ses prix, sa recette et ses ressources.' },
+    { app: 'calculator', title: 'Calculette', icon: '🧮', text: 'Un calcul rapide de coût, marge ou quantité sans sortir du bureau.' },
+    { app: 'priceWatch', title: 'Surveiller les prix', icon: '📈', text: 'Garde de côté les items dont tu veux suivre le prix.' },
+    { app: 'favorites', title: 'Favoris', icon: '⭐', text: 'Retrouve les items que tu utilises souvent.' },
 ];
 </script>
 
 <template>
     <DesktopAppShell
         title="Accueil bureau"
-        subtitle="Tout ce qu’il faut pour chercher, comparer et préparer tes crafts."
+        subtitle="Les raccourcis utiles, sans fausses apps qui ne servent à rien."
     >
         <div class="grid gap-3 sm:grid-cols-2">
             <button
@@ -36,7 +35,7 @@ const cards = [
         </div>
 
         <div class="mt-4 border border-[#9c9c9c] bg-[#fff8d8] p-3 text-xs text-slate-700 shadow-inner">
-            <strong>Astuce :</strong> commence par une recherche, puis envoie les items vers le panier, le comparateur ou le suivi des prix.
+            <strong>Flux conseillé :</strong> recherche un item, règle la quantité sur sa fiche, puis ouvre la liste des ressources nécessaires.
         </div>
     </DesktopAppShell>
 </template>

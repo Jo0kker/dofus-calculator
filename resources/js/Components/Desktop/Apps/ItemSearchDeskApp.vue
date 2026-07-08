@@ -38,16 +38,11 @@ const inspect = (item) => emit('open-app', 'itemInspector', {
     itemId: item.id,
 });
 
-const addToCart = (item) => emit('open-app', 'craftCart', {
-    seedItem: item,
-    toast: `${item.name} ajouté au panier craft`,
-});
-
 onMounted(fetchItems);
 </script>
 
 <template>
-    <DesktopAppShell title="Recherche d’items" subtitle="Cherche un item puis ouvre son détail, le panier ou le comparateur.">
+    <DesktopAppShell title="Recherche d’items" subtitle="Cherche un item puis ouvre sa fiche.">
         <div class="sticky top-0 z-10 -mx-3 -mt-3 border-b border-[#9c9c9c] bg-[#f3f0df] p-3">
             <div class="flex gap-2">
                 <input
@@ -87,8 +82,7 @@ onMounted(fetchItems);
                     </p>
                 </div>
                 <div class="flex shrink-0 gap-1">
-                    <button type="button" class="desk-button" @click="inspect(item)">Inspecter</button>
-                    <button type="button" class="desk-button" @click="addToCart(item)">Panier</button>
+                    <button type="button" class="desk-button" @click="inspect(item)">Ouvrir</button>
                 </div>
             </article>
         </div>
