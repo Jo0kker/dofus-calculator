@@ -70,8 +70,15 @@ const parseExpression = (tokens) => {
             return val;
         }
         let num = '';
+        let hasDot = false;
         if (tokens[i] === '-') { num += '-'; i++; }
-        while (i < tokens.length && /[0-9.]/.test(tokens[i])) num += tokens[i++];
+        while (i < tokens.length && /[0-9.]/.test(tokens[i])) {
+            if (tokens[i] === '.') {
+                if (hasDot) throw new Error('Nombre invalide');
+                hasDot = true;
+            }
+            num += tokens[i++];
+        }
         if (!num || num === '-') throw new Error('Nombre invalide');
         return parseFloat(num);
     };
