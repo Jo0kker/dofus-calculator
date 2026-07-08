@@ -42,6 +42,8 @@ const findPriceForServer = (prices = []) => {
 
 const currentPrice = computed(() => findPriceForServer(item.value?.prices || []));
 const directPrice = computed(() => currentPrice.value ? Number(currentPrice.value.price) : null);
+const normalizedCraftQuantity = computed(() => Math.max(1, Number(craftQuantity.value || 1)));
+const directPriceTotal = computed(() => directPrice.value ? directPrice.value * normalizedCraftQuantity.value : null);
 
 const descriptionText = computed(() => {
     const description = item.value?.metadata?.description;
@@ -66,10 +68,10 @@ const manualRows = computed(() => recipeIngredients.value.map((ingredient) => {
 
     return {
         ingredient,
-        quantity,
+        quantity: quantity * normalizedCraftQuantity.value,
         included,
         unitPrice: price ? Number(price.price) : null,
-        total: price && included ? Number(price.price) * quantity : 0,
+        total: price && included ? Number(price.price) * quantity * normalizedCraftQuantity.value : 0,
         missing: !price && included,
     };
 }));
@@ -81,7 +83,7 @@ const excludedCount = computed(() => manualRows.value.filter(row => !row.include
 
 const bestCraftCost = computed(() => {
     if (calculationMode.value === 'optimized' && optimizedCalculation.value?.craftCost) {
-        return Number(optimizedCalculation.value.craftCost);
+        return Number(optimizedCalculation.value.craftCost) * normalizedCraftQuantity.value;
     }
 
     if (calculationMode.value === 'manual' && manualCanCraft.value) {
@@ -92,9 +94,9 @@ const bestCraftCost = computed(() => {
 });
 
 const craftVerdict = computed(() => {
-    if (!bestCraftCost.value || !directPrice.value) return null;
+    if (!bestCraftCost.value || !directPriceTotal.value) return null;
 
-    const diff = directPrice.value - bestCraftCost.value;
+    const diff = directPriceTotal.value - bestCraftCost.value;
     return {
         label: diff > 0 ? 'Craft rentable' : 'Achat direct meilleur',
         diff: Math.abs(diff),
@@ -122,6 +124,31 @@ const resourceRows = computed(() => recipeIngredients.value.map((ingredient) => 
 }));
 
 const resourcesTotal = computed(() => resourceRows.value.reduce((sum, row) => sum + (row.total || 0), 0));
+const missingResourcePriceCount = computed(() => resourceRows.value.filter(row => row.unitPrice === null).length);
+
+const optimizedNodeUnitCost = (node) => Number(node.usedPrice ?? node.price ?? node.directPrice ?? node.craftCost ?? node.cost ?? 0);
+const optimizedNodeQuantity = (node) => Number(node.quantity || node.pivot?.quantity || 1) * normalizedCraftQuantity.value;
+const optimizedNodeTotal = (node) => {
+    const unitCost = optimizedNodeUnitCost(node);
+    return unitCost ? unitCost * optimizedNodeQuantity(node) : 0;
+};
+const optimizedNodeMethod = (node) => {
+    if (node.usedMethod === 'craft') return 'craft';
+    if (node.usedMethod === 'buy') return 'achat';
+    return node.hasCraft ? 'craft possible' : 'achat';
+};
+
+const openResourceList = () => {
+    if (!item.value?.recipe) return;
+
+    emit('open-app', 'craftCart', {
+        windowId: `resources-${item.value.id}`,
+        title: `Ressources - ${item.value.name}`,
+        sourceName: item.value.name,
+        craftQuantity: normalizedCraftQuantity.value,
+        resources: resourceRows.value,
+    });
+};
 
 const copyItemName = async (name) => {
     await navigator.clipboard?.writeText(name);
@@ -274,8 +301,7 @@ onMounted(loadItem);
                             <div class="flex min-w-0 items-center gap-1">
                                 <h3 class="min-w-0 flex-1 truncate text-[13px] font-black text-slate-950">{{ item.name }}</h3>
                                 <button class="icon-btn" type="button" title="Copier le nom" @click="copyItemName(item.name)">⧉</button>
-                                <button class="icon-btn" type="button" title="Ajouter au panier" @click="emit('open-app', 'craftCart', { seedItem: item })">🧺</button>
-                                <button class="icon-btn" type="button" title="Comparer" @click="emit('open-app', 'compare', { seedItem: item })">⚖</button>
+                                <button v-if="item.recipe" class="icon-btn" type="button" title="Liste ressources" @click="openResourceList">🧺</button>
                                 <button class="icon-btn" type="button" title="Surveiller" @click="emit('open-app', 'priceWatch', { seedItem: item })">⌁</button>
                             </div>
                             <p class="truncate text-[10px] text-slate-500">Niv. {{ item.level || '—' }} · {{ item.type || 'Type inconnu' }}</p>
@@ -295,6 +321,12 @@ onMounted(loadItem);
                         <div class="segmented">
                             <button type="button" :class="calculationMode === 'optimized' ? 'active' : ''" @click="calculationMode = 'optimized'">Optimisé</button>
                             <button type="button" :class="calculationMode === 'manual' ? 'active' : ''" @click="calculationMode = 'manual'">Manuel</button>
+                        </div>
+
+                        <div class="craft-qty-strip">
+                            <label>Nombre de crafts</label>
+                            <input v-model.number="craftQuantity" type="number" min="1" class="compact-input qty" />
+                            <button type="button" class="icon-btn wide" title="Ouvrir la liste des ressources" @click="openResourceList">🧺</button>
                         </div>
 
                         <div v-if="!isServerSelected" class="compact-note warn">Sélectionne un serveur pour calculer les prix.</div>
@@ -334,8 +366,9 @@ onMounted(loadItem);
                         <div v-else-if="optimizedCalculation?.craftTree?.ingredients" class="compact-list">
                             <div class="list-head"><strong>Décision automatique</strong></div>
                             <div v-for="node in optimizedCalculation.craftTree.ingredients" :key="node.id" class="line-row">
-                                <button type="button" class="min-w-0 flex-1 truncate text-left font-bold text-[#0b3f88] hover:underline" @click="openIngredient(node)">{{ node.quantity || node.pivot?.quantity || 1 }}x {{ node.name }}</button>
-                                <strong class="shrink-0">{{ node.cost ? `${formatNumber(node.cost)} K` : (node.price ? `${formatNumber(node.price)} K` : '—') }}</strong>
+                                <button type="button" class="min-w-0 flex-1 truncate text-left font-bold text-[#0b3f88] hover:underline" @click="openIngredient(node)">x{{ optimizedNodeQuantity(node) }} {{ node.name }}</button>
+                                <span class="shrink-0 text-[9px] uppercase text-slate-500">{{ optimizedNodeMethod(node) }}</span>
+                                <strong class="shrink-0">{{ optimizedNodeTotal(node) ? `${formatNumber(optimizedNodeTotal(node))} K` : '—' }}</strong>
                                 <button type="button" class="icon-btn" title="Copier" @click="copyItemName(node.name)">⧉</button>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(node)">↗</button>
                             </div>
@@ -386,8 +419,8 @@ onMounted(loadItem);
 
                 <section v-if="item.recipe" class="desk-panel">
                     <div class="panel-title with-input">
-                        <span>Ressources</span>
-                        <input v-model.number="craftQuantity" type="number" min="1" class="compact-input qty" />
+                        <span>Ressources pour {{ normalizedCraftQuantity }} craft(s)</span>
+                        <button type="button" class="icon-btn wide" title="Ouvrir en liste" @click="openResourceList">🧺</button>
                     </div>
                     <div class="max-h-72 overflow-auto p-1.5">
                         <article v-for="row in resourceRows" :key="row.id" class="resource-row">
@@ -407,7 +440,7 @@ onMounted(loadItem);
                     </div>
                     <div class="total-strip">
                         <span>Total estimé</span>
-                        <strong>{{ formatNumber(resourcesTotal) }} K</strong>
+                        <strong>{{ formatNumber(resourcesTotal) }} K <em v-if="missingResourcePriceCount">({{ missingResourcePriceCount }} prix manquant(s))</em></strong>
                     </div>
                 </section>
             </aside>
@@ -513,6 +546,22 @@ onMounted(loadItem);
     color: #0b4c95;
 }
 
+.craft-qty-strip {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border: 1px solid #ddd8c2;
+    background: #fffef7;
+    padding: 5px;
+    font-size: 10px;
+    font-weight: 800;
+}
+
+.craft-qty-strip label {
+    flex: 1;
+    color: #334155;
+}
+
 .metric-card,
 .price-strip,
 .total-strip {
@@ -558,6 +607,13 @@ onMounted(loadItem);
     font-size: 13px;
     font-weight: 900;
     color: #0b4c95;
+}
+
+.total-strip em {
+    color: #b91c1c;
+    font-size: 10px;
+    font-style: normal;
+    font-weight: 700;
 }
 
 .total-strip {

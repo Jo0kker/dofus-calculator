@@ -27,12 +27,9 @@ export const desktopAppComponents = {
 };
 
 export const desktopAppRegistry = [
-    { id: 'workspace', title: 'Accueil bureau', icon: '🧭', component: 'workspace', width: 760, height: 560, group: 'Pilotage', description: 'Raccourcis et outils principaux' },
-    { id: 'itemSearch', title: 'Recherche d’items', icon: '🔎', component: 'itemSearch', width: 760, height: 680, group: 'Items', description: 'Trouver rapidement un item' },
-    { id: 'itemInspector', title: 'Détail item', icon: '📦', component: 'itemInspector', width: 540, height: 680, group: 'Items', description: 'Infos, craft, prix et actions' },
-    { id: 'craftCart', title: 'Panier craft', icon: '🧺', component: 'craftCart', width: 680, height: 620, group: 'Craft', description: 'Liste des crafts à préparer' },
-    { id: 'compare', title: 'Comparateur', icon: '⚖️', component: 'compare', width: 760, height: 560, group: 'Items', description: 'Comparer plusieurs items' },
-    { id: 'calculator', title: 'Calculateur', icon: '🧮', component: 'calculator', width: 720, height: 620, group: 'Craft', description: 'Calculer coûts et quantités' },
+    { id: 'workspace', title: 'Accueil bureau', icon: '🧭', component: 'workspace', width: 760, height: 560, group: 'Pilotage', description: 'Raccourcis utiles' },
+    { id: 'itemSearch', title: 'Recherche d’items', icon: '🔎', component: 'itemSearch', width: 760, height: 680, group: 'Items', description: 'Trouver un item et ouvrir sa fiche' },
+    { id: 'calculator', title: 'Calculette', icon: '🧮', component: 'calculator', width: 380, height: 520, group: 'Outils', description: 'Calculs rapides de kamas' },
     { id: 'priceWatch', title: 'Suivi des prix', icon: '📈', component: 'priceWatch', width: 700, height: 560, group: 'Commerce', description: 'Objectifs d’achat et alertes' },
     { id: 'favorites', title: 'Favoris', icon: '⭐', component: 'favorites', width: 620, height: 560, group: 'Organisation', description: 'Items épinglés et récents' },
     { id: 'server', title: 'Serveur', icon: '🌍', component: 'server', width: 440, height: 420, group: 'Système', description: 'Choisir le serveur de prix' },
@@ -43,7 +40,6 @@ export const desktopAppRegistry = [
 
 export const legacyDesktopApps = [
     { id: 'legacy-items', title: 'Catalogue items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Pages' },
-    { id: 'legacy-calculator', title: 'Page calculateur', url: '/calculator', icon: '🧮', width: 1120, height: 720, group: 'Pages' },
     { id: 'legacy-favorites', title: 'Page favoris', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Pages' },
     { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Compte' },
 ];
