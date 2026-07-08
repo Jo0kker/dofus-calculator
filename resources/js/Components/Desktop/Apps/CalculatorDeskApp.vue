@@ -37,24 +37,70 @@ const backspace = () => {
     display.value = display.value.length > 1 ? display.value.slice(0, -1) : '0';
 };
 
+const parseExpression = (tokens) => {
+    let i = 0;
+
+    const parseExpr = () => {
+        let left = parseTerm();
+        while (i < tokens.length && (tokens[i] === '+' || tokens[i] === '-')) {
+            const op = tokens[i++];
+            const right = parseTerm();
+            left = op === '+' ? left + right : left - right;
+        }
+        return left;
+    };
+
+    const parseTerm = () => {
+        let left = parseFactor();
+        while (i < tokens.length && (tokens[i] === '*' || tokens[i] === '/')) {
+            const op = tokens[i++];
+            const right = parseFactor();
+            if (op === '/' && right === 0) throw new Error('Division par zéro');
+            left = op === '*' ? left * right : left / right;
+        }
+        return left;
+    };
+
+    const parseFactor = () => {
+        if (tokens[i] === '(') {
+            i++;
+            const val = parseExpr();
+            if (tokens[i] !== ')') throw new Error('Parenthèse manquante');
+            i++;
+            return val;
+        }
+        let num = '';
+        if (tokens[i] === '-') { num += '-'; i++; }
+        while (i < tokens.length && /[0-9.]/.test(tokens[i])) num += tokens[i++];
+        if (!num || num === '-') throw new Error('Nombre invalide');
+        return parseFloat(num);
+    };
+
+    const value = parseExpr();
+    if (i !== tokens.length) throw new Error('Calcul invalide');
+    return value;
+};
+
 const calculate = () => {
     error.value = '';
 
-    if (!/^[0-9+\-*/().\s]+$/.test(expression.value)) {
+    const tokens = expression.value.replace(/\s/g, '').split('');
+
+    if (!tokens.length || !/^[0-9+\-*/().]+$/.test(tokens.join(''))) {
         error.value = 'Calcul invalide';
         return;
     }
 
     try {
-        const value = Function(`"use strict"; return (${expression.value})`)();
+        const value = parseExpression(tokens);
         if (!Number.isFinite(value)) {
             error.value = 'Résultat invalide';
             return;
         }
         result.value = Math.round(value * 100) / 100;
         display.value = String(result.value);
-    } catch {
-        error.value = 'Calcul invalide';
+    } catch (e) {
+        error.value = e.message || 'Calcul invalide';
     }
 };
 
