@@ -1,9 +1,15 @@
 {
     "$schema": "https://getcomposer.org/schema.json",
-    "name": "laravel/laravel",
+    "name": "jo0kker/dofus-calculator",
     "type": "project",
-    "description": "The skeleton application for the Laravel framework.",
-    "keywords": ["laravel", "framework"],
+    "description": "Application web communautaire pour calculer les coûts de craft et suivre les prix Dofus.",
+    "keywords": [
+        "dofus",
+        "calculator",
+        "craft",
+        "economy",
+        "laravel"
+    ],
     "license": "MIT",
     "require": {
         "php": "^8.4",
@@ -79,5 +85,16 @@
         }
     },
     "minimum-stability": "stable",
-    "prefer-stable": true
+    "prefer-stable": true,
+    "homepage": "https://github.com/Jo0kker/dofus-calculator",
+    "authors": [
+        {
+            "name": "Jo0kker",
+            "homepage": "https://github.com/Jo0kker"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/Jo0kker/dofus-calculator/issues",
+        "source": "https://github.com/Jo0kker/dofus-calculator"
+    }
 }
