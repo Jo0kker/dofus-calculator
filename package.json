@@ -24,5 +24,16 @@
     },
     "dependencies": {
         "vue-draggable-resizable": "3.0.0"
+    },
+    "name": "dofus-calculator",
+    "description": "Application web communautaire pour calculer les coûts de craft et suivre les prix Dofus.",
+    "license": "MIT",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/Jo0kker/dofus-calculator.git"
+    },
+    "homepage": "https://github.com/Jo0kker/dofus-calculator",
+    "bugs": {
+        "url": "https://github.com/Jo0kker/dofus-calculator/issues"
     }
 }

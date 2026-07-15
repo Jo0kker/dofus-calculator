@@ -1,0 +1,40 @@
+name: Bug report
+description: Signaler un problème reproductible sur Dofus Calculator
+title: "[Bug] "
+labels:
+  - bug
+body:
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: Décrivez clairement le problème rencontré.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Étapes pour reproduire
+      description: Listez les étapes nécessaires pour reproduire le bug.
+      placeholder: |
+        1. Aller sur...
+        2. Cliquer sur...
+        3. Observer...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Résultat attendu
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: Environnement
+      description: Navigateur, OS, serveur, commit, etc.
+  - type: textarea
+    id: additional
+    attributes:
+      label: Contexte additionnel
+      description: Captures d'écran, logs ou détails utiles.
