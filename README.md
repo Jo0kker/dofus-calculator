@@ -62,6 +62,10 @@ Le projet inclut des commandes Artisan pour peupler les données Dofus :
 Les routes API publiques sont disponibles sous `/api`.
 La documentation OpenAPI peut être générée et consultée via Scramble selon la configuration du projet.
 
+## Déploiement
+
+Un push sur la branche `main` déclenche automatiquement le déploiement de l'application. Aucune étape manuelle n'est nécessaire.
+
 ## Contribution
 
 Les contributions sont les bienvenues. Merci de lire [CONTRIBUTING.md](CONTRIBUTING.md) avant d'ouvrir une issue ou une pull request.
