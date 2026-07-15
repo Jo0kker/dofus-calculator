@@ -180,6 +180,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import CraftTreeNode from './CraftTreeNode.vue';
 
@@ -190,11 +191,17 @@ const props = defineProps({
 });
 
 const { selectedServer, selectedServerId, isServerSelected } = useServerSelection();
+const page = usePage();
 const calculation = ref(null);
 const optimizedCalculation = ref(null);
 const includedIngredients = ref({});
 const calculationMode = ref('optimized');
 const loadingOptimized = ref(false);
+
+const getEffectivePriceMode = item => {
+    const preference = item.price_preferences?.find(entry => entry.server_id == selectedServerId.value);
+    return preference?.mode || page.props.auth?.user?.price_mode || 'community';
+};
 
 // Initialiser les checkboxes pour tous les ingrédients
 const initializeIngredients = () => {
@@ -224,7 +231,11 @@ const calculateCost = () => {
         const isIncluded = includedIngredients.value[ingredient.id] !== false;
         
         // Trouver le prix pour le serveur sélectionné
-        const price = ingredient.prices.find(p => p.server.id == selectedServerId.value);
+        const communityPrice = ingredient.prices?.find(p => (p.server_id ?? p.server?.id) == selectedServerId.value);
+        const personalPrice = ingredient.personal_prices?.find(p => p.server_id == selectedServerId.value);
+        const price = getEffectivePriceMode(ingredient) === 'personal'
+            ? personalPrice || communityPrice
+            : communityPrice;
         
         if (price && isIncluded) {
             const unitPrice = price.price;
@@ -325,6 +336,14 @@ watch(selectedServerId, async () => {
 // Calculer quand le mode change
 watch(calculationMode, async (newMode) => {
     if (newMode === 'manual') {
+        calculateCost();
+    } else {
+        await calculateOptimized();
+    }
+});
+
+watch(() => page.props.auth?.user?.price_mode, async () => {
+    if (calculationMode.value === 'manual') {
         calculateCost();
     } else {
         await calculateOptimized();

@@ -1,8 +1,12 @@
 <?php
 
 use App\Models\Item;
+use App\Models\ItemPrice;
+use App\Models\PersonalItemPrice;
 use App\Models\Recipe;
+use App\Models\Server;
 use App\Models\User;
+use App\Models\UserItemPricePreference;
 
 it('searches desktop items without changing the classic items page', function () {
     $this->actingAs(User::factory()->create(['interface_mode' => 'desktop']));
@@ -75,7 +79,16 @@ it('returns desktop api tokens only in desktop mode', function () {
 });
 
 it('returns a desktop item inspector payload', function () {
-    $this->actingAs(User::factory()->create(['interface_mode' => 'desktop']));
+    $server = Server::create([
+        'name' => 'Desktop Test',
+        'slug' => 'desktop-test',
+    ]);
+    $user = User::factory()->create([
+        'interface_mode' => 'desktop',
+        'server_id' => $server->id,
+        'price_contributions_count' => 12,
+    ]);
+    $this->actingAs($user);
 
     $item = Item::create([
         'dofusdb_id' => 900003,
@@ -102,6 +115,26 @@ it('returns a desktop item inspector payload', function () {
     ]);
     $recipe->ingredients()->attach($ingredient->id, ['quantity' => 10]);
 
+    ItemPrice::create([
+        'server_id' => $server->id,
+        'item_id' => $item->id,
+        'price' => 1200,
+        'created_by' => $user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+    PersonalItemPrice::create([
+        'user_id' => $user->id,
+        'server_id' => $server->id,
+        'item_id' => $item->id,
+        'price' => 950,
+    ]);
+    UserItemPricePreference::create([
+        'user_id' => $user->id,
+        'server_id' => $server->id,
+        'item_id' => $item->id,
+        'mode' => 'personal',
+    ]);
+
     $response = $this->getJson("/desktop/api/items/{$item->id}");
 
     $response
@@ -111,9 +144,15 @@ it('returns a desktop item inspector payload', function () {
         ->assertJsonPath('item.recipe.ingredients.0.name', 'Poil de Prespic')
         ->assertJsonPath('item.recipe.ingredients.0.quantity', 10)
         ->assertJsonPath('item.recipe.ingredients.0.pivot.quantity', 10)
+        ->assertJsonPath('item.prices.0.user.name', $user->name)
+        ->assertJsonPath('item.prices.0.user.price_contributions_count', 12)
+        ->assertJsonPath('item.personal_prices.0.price', 950)
+        ->assertJsonPath('item.price_preferences.0.mode', 'personal')
         ->assertJsonStructure([
             'item' => [
                 'prices',
+                'personal_prices',
+                'price_preferences',
                 'recipe' => [
                     'ingredients' => [[
                         'prices',

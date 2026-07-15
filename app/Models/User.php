@@ -4,14 +4,14 @@ namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
 use Laravel\Sanctum\HasApiTokens;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class User extends Authenticatable
 {
@@ -19,6 +19,7 @@ class User extends Authenticatable
 
     /** @use HasFactory<\Database\Factories\UserFactory> */
     use HasFactory;
+
     use HasProfilePhoto;
     use Notifiable;
     use TwoFactorAuthenticatable;
@@ -35,6 +36,7 @@ class User extends Authenticatable
         'server_id',
         'role',
         'interface_mode',
+        'price_mode',
     ];
 
     /**
@@ -68,6 +70,7 @@ class User extends Authenticatable
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
+            'price_contributions_count' => 'integer',
         ];
     }
 
@@ -91,9 +94,11 @@ class User extends Authenticatable
     {
         if ($this->isFavorite($item)) {
             $this->favoriteItems()->detach($item->id);
+
             return false;
         } else {
             $this->favoriteItems()->attach($item->id);
+
             return true;
         }
     }
@@ -106,6 +111,21 @@ class User extends Authenticatable
     public function priceReports(): HasMany
     {
         return $this->hasMany(PriceReport::class, 'reported_by');
+    }
+
+    public function submittedPrices(): HasMany
+    {
+        return $this->hasMany(PriceHistory::class, 'created_by');
+    }
+
+    public function personalItemPrices(): HasMany
+    {
+        return $this->hasMany(PersonalItemPrice::class);
+    }
+
+    public function itemPricePreferences(): HasMany
+    {
+        return $this->hasMany(UserItemPricePreference::class);
     }
 
     public function apiLogs(): HasMany

@@ -37,6 +37,7 @@ class UserFactory extends Factory
             'profile_photo_path' => null,
             'current_team_id' => null,
             'interface_mode' => 'classic',
+            'price_mode' => 'community',
         ];
     }
 

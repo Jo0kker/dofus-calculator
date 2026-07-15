@@ -114,8 +114,10 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { computed, ref, watch } from 'vue';
+import { Link, usePage } from '@inertiajs/vue3';
+
+const page = usePage();
 
 const props = defineProps({
     recipe: {
@@ -161,15 +163,34 @@ const calculateResourcesRecursive = (recipe, quantity) => {
                     quantity: 0,
                     level: ingredient.level,
                     image_url: ingredient.image_url,
-                    price: ingredient.prices && ingredient.prices.length > 0 
-                        ? ingredient.prices.reduce((sum, p) => sum + p.price, 0) / ingredient.prices.length 
-                        : null
+                    price: getEffectivePrice(ingredient)
                 };
             }
             totalResources.value[ingredient.id].quantity += neededQuantity;
         }
     });
 };
+
+const getEffectivePrice = ingredient => {
+    const communityPrice = ingredient.prices?.[0] || null;
+    const personalPrice = ingredient.personal_prices?.[0] || null;
+    const preference = ingredient.price_preferences?.find(entry => entry.server_id == page.props.selected_server_id);
+    const effectiveMode = preference?.mode || page.props.auth?.user?.price_mode || 'community';
+
+    if (effectiveMode === 'personal') {
+        return personalPrice?.price ?? communityPrice?.price ?? null;
+    }
+
+    return communityPrice?.price ?? null;
+};
+
+watch(() => page.props.auth?.user?.price_mode, () => {
+    if (showResources.value) calculateResources();
+});
+
+watch(() => props.recipe, () => {
+    if (showResources.value) calculateResources();
+}, { deep: true });
 
 const sortedResources = computed(() => {
     return Object.values(totalResources.value).sort((a, b) => {

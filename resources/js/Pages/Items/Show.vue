@@ -360,13 +360,14 @@ const toggleFavorite = () => {
 };
 
 const getDirectPrice = () => {
-    // Retourne le prix moyen des prix actuels, ou null
-    if (!props.item.prices || props.item.prices.length === 0) {
-        return null;
+    const itemPreference = props.item.price_preferences?.find(preference => preference.server_id == page.props.selected_server_id);
+    const effectiveMode = itemPreference?.mode || page.props.auth?.user?.price_mode || 'community';
+
+    if (effectiveMode === 'personal' && props.item.personal_prices?.length) {
+        return props.item.personal_prices[0].price;
     }
-    
-    const totalPrice = props.item.prices.reduce((sum, price) => sum + price.price, 0);
-    return totalPrice / props.item.prices.length;
+
+    return props.item.prices?.[0]?.price ?? null;
 };
 
 const reportPrice = (price) => {

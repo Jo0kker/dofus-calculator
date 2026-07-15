@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Item;
 use App\Models\Server;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -13,38 +14,38 @@ class FavoriteController extends Controller
     {
         $serverId = session('selected_server_id');
         $server = Server::find($serverId);
-        
+
         $favorites = auth()->user()->favoriteItems()
             ->with([
                 'recipe.ingredients.recipe.ingredients.prices' => function ($q) use ($serverId) {
                     if ($serverId) {
                         $q->where('server_id', $serverId)
-                          ->where('status', 'approved')
-                          ->orderBy('updated_at', 'desc');
+                            ->where('status', 'approved')
+                            ->orderBy('updated_at', 'desc');
                     }
                 },
                 'recipe.ingredients.prices' => function ($q) use ($serverId) {
                     if ($serverId) {
                         $q->where('server_id', $serverId)
-                          ->where('status', 'approved')
-                          ->orderBy('updated_at', 'desc');
+                            ->where('status', 'approved')
+                            ->orderBy('updated_at', 'desc');
                     }
                 },
                 'prices' => function ($q) use ($serverId) {
                     if ($serverId) {
                         $q->where('server_id', $serverId)
-                          ->where('status', 'approved')
-                          ->orderBy('updated_at', 'desc');
+                            ->where('status', 'approved')
+                            ->orderBy('updated_at', 'desc');
                     }
-                }
+                },
             ])
             ->get();
-        
+
         // Calculer les coûts récursifs pour chaque favori
         $favoriteAnalysis = [];
         if ($server) {
             foreach ($favorites as $favorite) {
-                $analysis = $this->analyzeItem($favorite, $server);
+                $analysis = $this->analyzeItem($favorite, $server, $request->user());
                 $favoriteAnalysis[] = $analysis;
             }
         } else {
@@ -60,20 +61,20 @@ class FavoriteController extends Controller
                 ];
             }
         }
-        
+
         return Inertia::render('Favorites/Index', [
             'favorites' => $favoriteAnalysis,
         ]);
     }
-    
+
     public function toggle(Item $item)
     {
         $isFavorite = auth()->user()->toggleFavorite($item);
-        
+
         return back()->with('success', $isFavorite ? 'Ajouté aux favoris' : 'Retiré des favoris');
     }
-    
-    private function analyzeItem(Item $item, Server $server): array
+
+    private function analyzeItem(Item $item, Server $server, User $user): array
     {
         $analysis = [
             'item' => $item,
@@ -83,23 +84,23 @@ class FavoriteController extends Controller
             'savings' => 0,
             'craft_tree' => null,
         ];
-        
+
         // Prix direct
-        $directPrice = $item->getPriceForServer($server);
+        $directPrice = $item->getPriceForServer($server, $user);
         if ($directPrice) {
             $analysis['direct_price'] = $directPrice->price;
         }
-        
+
         // Coût de craft si possible
         if ($item->recipe) {
             $calculated = [];
-            $craftCost = $item->recipe->calculateCost($server, $calculated);
+            $craftCost = $item->recipe->calculateCost($server, $calculated, $user);
             if ($craftCost !== null) {
                 $analysis['craft_cost'] = $craftCost;
-                $analysis['craft_tree'] = $this->buildCraftTree($item, $server, $calculated);
+                $analysis['craft_tree'] = $this->buildCraftTree($item, $server, $calculated, $user);
             }
         }
-        
+
         // Déterminer la meilleure option
         if ($analysis['direct_price'] && $analysis['craft_cost']) {
             if ($analysis['craft_cost'] < $analysis['direct_price']) {
@@ -114,16 +115,16 @@ class FavoriteController extends Controller
         } elseif ($analysis['craft_cost']) {
             $analysis['best_option'] = 'craft';
         }
-        
+
         return $analysis;
     }
-    
-    private function buildCraftTree(Item $item, Server $server, array &$calculated): array
+
+    private function buildCraftTree(Item $item, Server $server, array &$calculated, User $user): array
     {
-        if (!$item->recipe) {
+        if (! $item->recipe) {
             return [];
         }
-        
+
         $tree = [];
         foreach ($item->recipe->ingredients as $ingredient) {
             $ingredientData = [
@@ -134,48 +135,48 @@ class FavoriteController extends Controller
                 'chosen_method' => 'unavailable',
                 'subtree' => [],
             ];
-            
-            $directPrice = $ingredient->getPriceForServer($server);
+
+            $directPrice = $ingredient->getPriceForServer($server, $user);
             if ($directPrice) {
                 $ingredientData['direct_price'] = $directPrice->price;
             }
-            
+
             // Vérifier si l'ingrédient a une recette et peut être crafté
             if ($ingredient->recipe) {
                 // Calculer le coût de craft si pas déjà fait
-                if (!isset($calculated[$ingredient->id])) {
-                    $craftCost = $ingredient->recipe->calculateCost($server, $calculated);
+                if (! isset($calculated[$ingredient->id])) {
+                    $craftCost = $ingredient->recipe->calculateCost($server, $calculated, $user);
                     if ($craftCost !== null) {
                         $calculated[$ingredient->id] = $craftCost;
                     }
                 }
-                
+
                 if (isset($calculated[$ingredient->id])) {
                     $ingredientData['craft_cost'] = $calculated[$ingredient->id];
-                    
+
                     // Déterminer quelle méthode est utilisée
                     if ($ingredientData['direct_price']) {
                         if ($ingredientData['craft_cost'] < $ingredientData['direct_price']) {
                             $ingredientData['chosen_method'] = 'craft';
-                            $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+                            $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated, $user);
                         } else {
                             $ingredientData['chosen_method'] = 'buy';
                         }
                     } else {
                         $ingredientData['chosen_method'] = 'craft';
-                        $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated);
+                        $ingredientData['subtree'] = $this->buildCraftTree($ingredient, $server, $calculated, $user);
                     }
                 }
             }
-            
+
             // Si pas de craft possible ou pas choisi, utiliser l'achat direct
             if ($ingredientData['chosen_method'] === 'unavailable' && $ingredientData['direct_price']) {
                 $ingredientData['chosen_method'] = 'buy';
             }
-            
+
             $tree[] = $ingredientData;
         }
-        
+
         return $tree;
     }
 }

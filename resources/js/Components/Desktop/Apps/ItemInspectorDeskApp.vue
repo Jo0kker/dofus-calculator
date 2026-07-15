@@ -1,6 +1,7 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
+import { usePage } from '@inertiajs/vue3';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 
@@ -13,6 +14,7 @@ const props = defineProps({
 
 const emit = defineEmits(['open-app']);
 
+const page = usePage();
 const { selectedServerId, isServerSelected } = useServerSelection();
 
 const loading = ref(false);
@@ -32,6 +34,8 @@ const includedIngredients = ref({});
 const optimizedCalculation = ref(null);
 const optimizedLoading = ref(false);
 const craftQuantity = ref(1);
+const itemPriceOverride = ref('');
+const preferenceSaving = ref(false);
 
 const formatNumber = (value) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(value || 0)));
 
@@ -40,7 +44,23 @@ const findPriceForServer = (prices = []) => {
     return prices.find((price) => Number(price.server_id || price.server?.id) === Number(selectedServerId.value)) || null;
 };
 
-const currentPrice = computed(() => findPriceForServer(item.value?.prices || []));
+const globalPriceMode = computed(() => page.props.auth?.user?.price_mode || 'community');
+const findPreferenceForServer = subject => findPriceForServer(subject?.price_preferences || []);
+const findPersonalPriceForServer = subject => findPriceForServer(subject?.personal_prices || []);
+const getEffectivePriceMode = subject => findPreferenceForServer(subject)?.mode || globalPriceMode.value;
+const findEffectivePriceForServer = subject => {
+    if (getEffectivePriceMode(subject) === 'personal') {
+        return findPersonalPriceForServer(subject) || findPriceForServer(subject?.prices || []);
+    }
+
+    return findPriceForServer(subject?.prices || []);
+};
+
+const communityPrice = computed(() => findPriceForServer(item.value?.prices || []));
+const personalPrice = computed(() => findPersonalPriceForServer(item.value));
+const effectivePriceMode = computed(() => itemPriceOverride.value || globalPriceMode.value);
+const currentPrice = computed(() => findEffectivePriceForServer(item.value));
+const isUsingPersonalPrice = computed(() => effectivePriceMode.value === 'personal' && Boolean(personalPrice.value));
 const directPrice = computed(() => currentPrice.value ? Number(currentPrice.value.price) : null);
 const normalizedCraftQuantity = computed(() => Math.max(1, Number(craftQuantity.value || 1)));
 const directPriceTotal = computed(() => directPrice.value ? directPrice.value * normalizedCraftQuantity.value : null);
@@ -63,7 +83,7 @@ const recipeIngredients = computed(() => item.value?.recipe?.ingredients || []);
 
 const manualRows = computed(() => recipeIngredients.value.map((ingredient) => {
     const quantity = Number(ingredient.pivot?.quantity || ingredient.quantity || 1);
-    const price = findPriceForServer(ingredient.prices || []);
+    const price = findEffectivePriceForServer(ingredient);
     const included = includedIngredients.value[ingredient.id] !== false;
 
     return {
@@ -107,7 +127,7 @@ const craftVerdict = computed(() => {
 const resourceRows = computed(() => recipeIngredients.value.map((ingredient) => {
     const baseQuantity = Number(ingredient.pivot?.quantity || ingredient.quantity || 1);
     const quantity = baseQuantity * Number(craftQuantity.value || 1);
-    const price = findPriceForServer(ingredient.prices || []);
+    const price = findEffectivePriceForServer(ingredient);
 
     return {
         id: ingredient.id,
@@ -175,6 +195,7 @@ const saveResourcePrice = async (ingredient) => {
             item_id: ingredient.id,
             server_id: selectedServerId.value,
             price: value,
+            price_mode: getEffectivePriceMode(ingredient),
         });
         resourcePriceInputs.value[ingredient.id] = '';
         resourcePriceMessage.value[ingredient.id] = 'Prix OK';
@@ -231,6 +252,7 @@ const loadItem = async () => {
     try {
         const { data } = await axios.get(`/desktop/api/items/${props.payload.itemId}`);
         item.value = data.item;
+        itemPriceOverride.value = findPreferenceForServer(item.value)?.mode || '';
         initializeIncludedIngredients();
         await loadOptimizedCalculation();
     } finally {
@@ -249,6 +271,7 @@ const savePrice = async () => {
             item_id: item.value.id,
             server_id: selectedServerId.value,
             price: priceInput.value,
+            price_mode: effectivePriceMode.value,
         });
         priceInput.value = '';
         priceMessage.value = 'Prix enregistré.';
@@ -261,14 +284,14 @@ const savePrice = async () => {
 };
 
 const reportPrice = async () => {
-    if (!currentPrice.value?.id || !reportComment.value.trim()) return;
+    if (!communityPrice.value?.id || !reportComment.value.trim()) return;
 
     reportSaving.value = true;
     reportMessage.value = '';
 
     try {
-        await axios.post(`/prices/${currentPrice.value.id}/report`, {
-            comment: reportComment.value,
+        await axios.post(`/prices/${communityPrice.value.id}/report`, {
+            reason: reportComment.value,
         });
         reportComment.value = '';
         reportMessage.value = 'Signalement envoyé.';
@@ -279,8 +302,29 @@ const reportPrice = async () => {
     }
 };
 
+const saveItemPriceMode = async () => {
+    if (!item.value?.id || !selectedServerId.value || preferenceSaving.value) return;
+
+    preferenceSaving.value = true;
+    try {
+        await axios.put('/prices/item-preference', {
+            item_id: item.value.id,
+            server_id: selectedServerId.value,
+            price_mode: itemPriceOverride.value || null,
+        });
+        await loadItem();
+    } finally {
+        preferenceSaving.value = false;
+    }
+};
+
 watch(() => props.payload.itemId, loadItem);
-watch([selectedServerId, calculationMode], () => loadOptimizedCalculation());
+watch(selectedServerId, () => {
+    itemPriceOverride.value = findPreferenceForServer(item.value)?.mode || '';
+    loadOptimizedCalculation();
+});
+watch(calculationMode, () => loadOptimizedCalculation());
+watch(globalPriceMode, () => loadOptimizedCalculation());
 watch(item, initializeIncludedIngredients);
 onMounted(loadItem);
 </script>
@@ -385,19 +429,42 @@ onMounted(loadItem);
                     <div class="space-y-1.5 p-2">
                         <div v-if="!isServerSelected" class="compact-note">Sélectionne un serveur.</div>
                         <template v-else>
+                            <label class="block border border-[#c8c1aa] bg-[#eee9d4] p-1.5 text-[10px] text-slate-700">
+                                <span class="mb-1 flex items-center justify-between gap-2">
+                                    <strong>Source pour cet objet</strong>
+                                    <span>Global : {{ globalPriceMode === 'personal' ? 'Perso' : 'HDV' }}</span>
+                                </span>
+                                <select
+                                    v-model="itemPriceOverride"
+                                    class="compact-input w-full"
+                                    :disabled="preferenceSaving"
+                                    @change="saveItemPriceMode"
+                                >
+                                    <option value="">Suivre le choix global</option>
+                                    <option value="community">Toujours HDV</option>
+                                    <option value="personal">Toujours perso</option>
+                                </select>
+                            </label>
+
                             <div class="price-strip">
-                                <span>Actuel</span>
+                                <span>{{ isUsingPersonalPrice ? 'Prix perso' : 'Prix HDV' }}</span>
                                 <strong v-if="currentPrice">{{ formatNumber(currentPrice.price) }} K</strong>
                                 <strong v-else class="text-slate-500">Aucun</strong>
                             </div>
+                            <p v-if="effectivePriceMode === 'personal' && !personalPrice && communityPrice" class="text-[10px] text-slate-500">
+                                Aucun prix perso : le prix HDV est utilisé en repli.
+                            </p>
+                            <p v-if="!isUsingPersonalPrice && communityPrice?.user" class="text-[10px] text-slate-600">
+                                Proposé par <strong>{{ communityPrice.user.name }}</strong> · {{ formatNumber(communityPrice.user.price_contributions_count) }} contribution(s)
+                            </p>
 
                             <form class="flex gap-1" @submit.prevent="savePrice">
-                                <input v-model="priceInput" type="number" min="1" required class="compact-input flex-1" :placeholder="currentPrice ? 'Nouveau prix' : 'Prix'" />
+                                <input v-model="priceInput" type="number" min="1" required class="compact-input flex-1" :placeholder="effectivePriceMode === 'personal' ? 'Prix perso' : 'Prix HDV'" />
                                 <button type="submit" class="icon-btn wide" title="Enregistrer" :disabled="priceSaving">{{ priceSaving ? '…' : '✓' }}</button>
                             </form>
                             <p v-if="priceMessage" class="truncate text-[10px] text-slate-600">{{ priceMessage }}</p>
 
-                            <div v-if="currentPrice" class="flex gap-1 border-t border-[#ddd8c2] pt-1.5">
+                            <div v-if="communityPrice && !isUsingPersonalPrice" class="flex gap-1 border-t border-[#ddd8c2] pt-1.5">
                                 <input v-model="reportComment" class="compact-input flex-1" placeholder="Signaler…" />
                                 <button type="button" class="icon-btn wide" title="Signaler" :disabled="reportSaving || !reportComment.trim()" @click="reportPrice">⚠</button>
                             </div>
