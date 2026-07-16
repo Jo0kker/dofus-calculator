@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
+import CommunityContributorBadge from '@/Components/CommunityContributorBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
 import PriceConfidenceBadge from '@/Components/PriceConfidenceBadge.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
@@ -39,6 +40,16 @@ const itemPriceOverride = ref('');
 const preferenceSaving = ref(false);
 
 const formatNumber = (value) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(value || 0)));
+const formatRelativeDate = (date) => {
+    if (!date) return 'récemment';
+
+    const days = Math.max(0, Math.floor((new Date() - new Date(date)) / 86400000));
+    if (days === 0) return "aujourd’hui";
+    if (days === 1) return 'hier';
+    if (days < 7) return `il y a ${days} jours`;
+    if (days < 30) return `il y a ${Math.floor(days / 7)} semaines`;
+    return `il y a ${Math.floor(days / 30)} mois`;
+};
 
 const findPriceForServer = (prices = []) => {
     if (!selectedServerId.value) return null;
@@ -464,6 +475,8 @@ onMounted(loadItem);
                                 <p>
                                     Dernier relevé par <strong>{{ communityPrice.user.name }}</strong> · {{ formatNumber(communityPrice.user.price_contributions_count) }} contribution(s)
                                 </p>
+                                <p>A contribué {{ formatRelativeDate(communityPrice.confidence_details?.latest_observation_at || communityPrice.updated_at) }}</p>
+                                <CommunityContributorBadge />
                             </div>
 
                             <form class="flex gap-1" @submit.prevent="savePrice">

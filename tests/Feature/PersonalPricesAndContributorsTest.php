@@ -120,6 +120,12 @@ it('exposes the current contributor and their historical contribution count with
             ->where('item.prices.0.user.price_contributions_count', 3)
             ->missing('item.prices.0.user.price_reliability_score')
             ->missing('item.prices.0.user.price_reliability_samples')
+            ->missing('item.prices.0.confidence_score')
+            ->missing('item.prices.0.confidence_details.average_reliability_score')
+            ->missing('item.prices.0.confidence_details.latest_plausibility_score')
+            ->missing('item.price_histories.0.reliability_snapshot')
+            ->missing('item.price_histories.0.evaluation_score')
+            ->missing('item.price_histories.0.influence_weight')
             ->missing('auth.user.price_reliability_score')
             ->missing('auth.user.price_reliability_samples')
             ->missing('item.prices.0.user.email')
@@ -245,6 +251,29 @@ it('counts API price submissions in the same contribution history', function () 
     expect($this->user->submittedPrices()->count())->toBe(1)
         ->and($this->user->submittedPrices()->first()->price)->toBe(1450)
         ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+});
+
+it('deduplicates repeated items in one API import and rejects invalid prices', function () {
+    Sanctum::actingAs($this->user, ['write']);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [
+            ['item_id' => $this->item->id, 'price' => 1000],
+            ['item_id' => $this->item->id, 'price' => 1250],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('updated_count', 1)
+        ->assertJsonPath('updated_prices.0.submitted_price', 1250);
+
+    expect($this->user->submittedPrices()->count())->toBe(1)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [['item_id' => $this->item->id, 'price' => 0]],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('prices.0.price');
 });
 
 it('backfills contribution counts from web history and successful legacy API logs', function () {

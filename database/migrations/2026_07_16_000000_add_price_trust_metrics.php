@@ -69,6 +69,7 @@ return new class extends Migration
             if (! Schema::hasColumn('price_histories', 'rejected_at')) {
                 $table->timestamp('rejected_at')->nullable();
             }
+
         });
     }
 

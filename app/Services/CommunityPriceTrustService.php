@@ -21,15 +21,18 @@ class CommunityPriceTrustService
 
     public function recalculate(int $itemId, int $serverId): ?ItemPrice
     {
+        $currentItemPrice = ItemPrice::query()
+            ->where('item_id', $itemId)
+            ->where('server_id', $serverId)
+            ->first();
+        $currentReasonCodes = $currentItemPrice?->confidence_details['reason_codes'] ?? [];
+        $isModerationLocked = $currentItemPrice?->status === ItemPrice::STATUS_REJECTED
+            && ! in_array('no_valid_observation', $currentReasonCodes, true);
+
         $observations = $this->loadLatestContributorObservations($itemId, $serverId);
 
         if ($observations->isEmpty()) {
-            $itemPrice = ItemPrice::query()
-                ->where('item_id', $itemId)
-                ->where('server_id', $serverId)
-                ->first();
-
-            $itemPrice?->update([
+            $currentItemPrice?->update([
                 'status' => ItemPrice::STATUS_REJECTED,
                 'confidence_score' => 0,
                 'confidence_level' => 'low',
@@ -40,7 +43,7 @@ class CommunityPriceTrustService
                 'confidence_version' => self::VERSION,
             ]);
 
-            return $itemPrice;
+            return $currentItemPrice;
         }
 
         $this->evaluateObservations($observations);
@@ -66,6 +69,7 @@ class CommunityPriceTrustService
             ->whereNull('rejected_at')
             ->where('created_at', '>=', now()->subDays(self::WINDOW_DAYS))
             ->count();
+        $recentContributorCount = $recentObservationCount > 0 ? $observations->count() : 0;
 
         return ItemPrice::updateOrCreate(
             [
@@ -75,11 +79,11 @@ class CommunityPriceTrustService
             [
                 'price' => $analysis['price'],
                 'created_by' => $latestObservation->created_by,
-                'status' => ItemPrice::STATUS_APPROVED,
+                'status' => $isModerationLocked ? ItemPrice::STATUS_REJECTED : ItemPrice::STATUS_APPROVED,
                 'confidence_score' => $analysis['confidence_score'],
                 'confidence_level' => $analysis['confidence_level'],
-                'recent_observations_count' => $recentObservationCount ?: $observations->count(),
-                'recent_contributors_count' => $observations->count(),
+                'recent_observations_count' => $recentObservationCount,
+                'recent_contributors_count' => $recentContributorCount,
                 'confidence_details' => $analysis['confidence_details'],
                 'confidence_computed_at' => now(),
                 'confidence_version' => self::VERSION,
@@ -106,8 +110,6 @@ class CommunityPriceTrustService
     {
         $evaluations = PriceHistory::query()
             ->where('created_by', $userId)
-            ->whereNotNull('evaluated_at')
-            ->whereNotNull('evaluation_score')
             ->where('created_at', '>=', now()->subDays(self::RELIABILITY_WINDOW_DAYS))
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -117,11 +119,14 @@ class CommunityPriceTrustService
                 'item_id',
                 'evaluation_score',
                 'evaluation_weight',
+                'evaluated_at',
                 'created_at',
             ])
             // Mettre à jour plusieurs fois le même marché ne crée pas
             // artificiellement de nouvelles preuves de fiabilité.
             ->unique(fn (PriceHistory $evaluation) => "{$evaluation->server_id}:{$evaluation->item_id}")
+            ->filter(fn (PriceHistory $evaluation) => $evaluation->evaluated_at !== null
+                && $evaluation->evaluation_score !== null)
             ->values();
 
         $weightedScore = self::RELIABILITY_PRIOR_SCORE * self::RELIABILITY_PRIOR_WEIGHT;
@@ -158,6 +163,17 @@ class CommunityPriceTrustService
         foreach ($observations as $observation) {
             $others = $observations->reject(fn (PriceHistory $candidate) => $candidate->id === $observation->id)->values();
             $reference = $this->analyze($others, $others->count());
+
+            if ($reference['agreement_score'] < 60) {
+                $observation->forceFill([
+                    'evaluation_score' => null,
+                    'evaluation_weight' => 0,
+                    'evaluated_at' => null,
+                ])->save();
+
+                continue;
+            }
+
             $deviation = abs(log(max(1, $observation->price) / max(1, $reference['price'])));
             $score = (int) round(100 * exp(-$deviation / 0.5));
             $agreementWeight = max(0.1, $reference['agreement_score'] / 100);
@@ -202,6 +218,7 @@ class CommunityPriceTrustService
         $dispersion = 0.0;
         $rawDispersion = 0.0;
         $weightedReliability = 0.0;
+        $weightedFreshness = 0.0;
         $effectiveContributors = 0.0;
         $experiencedContributors = 0;
 
@@ -212,8 +229,12 @@ class CommunityPriceTrustService
             $dispersion += $metric['consensus_deviation'] * $metric['influence_weight'];
             $rawDispersion += $metric['consensus_deviation'];
             $weightedReliability += $metric['reliability_score'] * $metric['influence_weight'];
-            $effectiveContributors += $metric['maturity'];
-            if (($observation->user?->price_reliability_samples ?? 0) >= 3) {
+            $weightedFreshness += (100 * exp(-$this->ageInDays($observation->created_at) / 30))
+                * $metric['influence_weight'];
+            $effectiveContributors += $metric['maturity']
+                * (0.25 + (0.75 * $metric['reliability_score'] / 100));
+            if (($observation->user?->price_reliability_samples ?? 0) >= 3
+                && $this->ageSince($observation->user?->created_at) >= 30) {
                 $experiencedContributors++;
             }
         }
@@ -225,8 +246,8 @@ class CommunityPriceTrustService
         $averageReliability = $weightedReliability / $totalWeight;
         $targetContributors = max(3, min(8, 3 + (int) floor(log10(max(1, $activeContributors)) * 2)));
         $evidenceScore = min(100, 100 * $effectiveContributors / $targetContributors);
-        $latestAgeDays = $this->ageInDays($observations->max('created_at'));
-        $freshnessScore = 100 * exp(-$latestAgeDays / 30);
+        $latestObservation = $observations->sortByDesc('created_at')->first();
+        $freshnessScore = $weightedFreshness / $totalWeight;
         $confidenceScore = (int) round(
             (0.45 * $evidenceScore)
             + (0.30 * $agreementScore)
@@ -248,10 +269,8 @@ class CommunityPriceTrustService
             $observations->count(),
             $experiencedContributors,
             $rawDispersion,
-            $latestAgeDays,
+            $freshnessScore,
         );
-
-        $latestObservation = $observations->sortByDesc('created_at')->first();
 
         return [
             'price' => max(1, $price),
@@ -260,16 +279,7 @@ class CommunityPriceTrustService
             'agreement_score' => (int) round($agreementScore),
             'observation_metrics' => $metrics,
             'confidence_details' => [
-                'active_contributors' => $activeContributors,
-                'target_contributors' => $targetContributors,
-                'effective_contributors' => round($effectiveContributors, 2),
-                'experienced_contributors' => $experiencedContributors,
-                'agreement_score' => (int) round($agreementScore),
-                'average_reliability_score' => (int) round($averageReliability),
-                'dispersion_percent' => round((exp($dispersion) - 1) * 100, 1),
-                'raw_dispersion_percent' => round((exp($rawDispersion) - 1) * 100, 1),
-                'freshness_score' => (int) round($freshnessScore),
-                'latest_plausibility_score' => $metrics[$latestObservation->id]['plausibility_score'],
+                'latest_observation_at' => $latestObservation->created_at?->toISOString(),
                 'window_days' => self::WINDOW_DAYS,
                 'reason_codes' => $reasonCodes,
             ],
@@ -286,12 +296,26 @@ class CommunityPriceTrustService
             ->orderByDesc('created_at')
             ->orderByDesc('id');
 
+        $cutoff = now()->subDays(self::WINDOW_DAYS);
         $observations = (clone $query)
-            ->where('created_at', '>=', now()->subDays(self::WINDOW_DAYS))
-            ->limit(500)
-            ->get()
-            ->unique('created_by')
-            ->values();
+            ->where('created_at', '>=', $cutoff)
+            ->whereNotExists(function ($newer) use ($itemId, $serverId, $cutoff) {
+                $newer->selectRaw('1')
+                    ->from('price_histories as newer')
+                    ->where('newer.item_id', $itemId)
+                    ->where('newer.server_id', $serverId)
+                    ->whereNull('newer.rejected_at')
+                    ->where('newer.created_at', '>=', $cutoff)
+                    ->whereColumn('newer.created_by', 'price_histories.created_by')
+                    ->where(function ($moreRecent) {
+                        $moreRecent->whereColumn('newer.created_at', '>', 'price_histories.created_at')
+                            ->orWhere(function ($sameTime) {
+                                $sameTime->whereColumn('newer.created_at', '=', 'price_histories.created_at')
+                                    ->whereColumn('newer.id', '>', 'price_histories.id');
+                            });
+                    });
+            })
+            ->get();
 
         if ($observations->isNotEmpty()) {
             return $observations;
@@ -327,7 +351,7 @@ class CommunityPriceTrustService
         return (int) ($user?->price_reliability_score ?? self::RELIABILITY_PRIOR_SCORE);
     }
 
-    private function reasonCodes(int $contributors, int $experienced, float $dispersion, float $latestAgeDays): array
+    private function reasonCodes(int $contributors, int $experienced, float $dispersion, float $freshnessScore): array
     {
         $codes = [];
 
@@ -342,7 +366,7 @@ class CommunityPriceTrustService
         if ((exp($dispersion) - 1) > 0.25) {
             $codes[] = 'high_dispersion';
         }
-        if ($latestAgeDays > 14) {
+        if ($freshnessScore < 60) {
             $codes[] = 'stale_observations';
         }
         if ($codes === []) {

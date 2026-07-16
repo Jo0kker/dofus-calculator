@@ -14,7 +14,6 @@ const props = defineProps({
 
 const details = computed(() => props.price.confidence_details || {});
 const level = computed(() => props.price.confidence_level || 'low');
-const score = computed(() => Number(props.price.confidence_score || 0));
 const contributors = computed(() => Number(props.price.recent_contributors_count || 0));
 const observations = computed(() => Number(props.price.recent_observations_count || 0));
 const isPending = computed(() => !props.price.confidence_computed_at);
@@ -38,7 +37,7 @@ const levelConfig = computed(() => isPending.value ? {
 }[level.value]));
 
 const reasonLabels = {
-    single_contributor: 'Un seul contributeur récent.',
+    single_contributor: 'Une seule source disponible.',
     few_independent_contributors: 'Encore peu de contributeurs indépendants.',
     learning_contributors: 'La fiabilité des contributeurs est encore en apprentissage.',
     high_dispersion: 'Les relevés récents sont assez dispersés.',
@@ -51,12 +50,6 @@ const reasons = computed(() => (details.value.reason_codes || [])
     .map(reason => reasonLabels[reason])
     .filter(Boolean));
 
-const plausibilityLabel = computed(() => {
-    const plausibility = Number(details.value.latest_plausibility_score ?? 0);
-    if (plausibility >= 75) return `cohérent (${plausibility} %)`;
-    if (plausibility >= 45) return `à confirmer (${plausibility} %)`;
-    return `atypique (${plausibility} %)`;
-});
 </script>
 
 <template>
@@ -66,25 +59,15 @@ const plausibilityLabel = computed(() => {
             :class="levelConfig.badge"
         >
             <span>{{ levelConfig.label }}</span>
-            <span v-if="!isPending" class="font-normal opacity-80">{{ contributors }} contributeur{{ contributors !== 1 ? 's' : '' }}</span>
+            <span v-if="!isPending" class="font-normal opacity-80">
+                {{ contributors }} contributeur{{ contributors !== 1 ? 's' : '' }} récent{{ contributors !== 1 ? 's' : '' }}
+            </span>
         </summary>
 
         <div class="mt-1.5 space-y-1 rounded-md border border-gray-200 bg-white p-2 text-gray-600 shadow-sm">
             <div v-if="!isPending" class="flex justify-between gap-3">
-                <span>Confiance du prix final</span>
-                <strong class="text-gray-800">{{ score }} %</strong>
-            </div>
-            <div v-if="!isPending" class="flex justify-between gap-3">
                 <span>Relevés récents</span>
                 <strong class="text-gray-800">{{ observations }} relevé{{ observations !== 1 ? 's' : '' }}</strong>
-            </div>
-            <div v-if="details.agreement_score !== undefined" class="flex justify-between gap-3">
-                <span>Accord entre relevés</span>
-                <strong class="text-gray-800">{{ details.agreement_score }} %</strong>
-            </div>
-            <div v-if="details.latest_plausibility_score !== undefined" class="flex justify-between gap-3">
-                <span>Plausibilité du dernier relevé</span>
-                <strong class="text-gray-800">{{ plausibilityLabel }}</strong>
             </div>
             <ul v-if="reasons.length" class="list-disc space-y-0.5 pl-4 text-gray-500">
                 <li v-for="reason in reasons" :key="reason">{{ reason }}</li>

@@ -23,9 +23,9 @@ class PriceApiController extends Controller
     {
         $request->validate([
             'server_id' => 'required|exists:servers,id',
-            'prices' => 'required|array',
+            'prices' => 'required|array|min:1|max:500',
             'prices.*.item_id' => 'required|exists:items,id',
-            'prices.*.price' => 'required|integer|min:0',
+            'prices.*.price' => 'required|integer|min:1|max:999999999',
         ]);
 
         $serverId = $request->input('server_id');
@@ -33,7 +33,8 @@ class PriceApiController extends Controller
 
         DB::beginTransaction();
         try {
-            foreach ($request->prices as $priceData) {
+            $prices = collect($request->prices)->keyBy('item_id')->values();
+            foreach ($prices as $priceData) {
                 $item = Item::find($priceData['item_id']);
 
                 $price = $this->priceSubmissionService->submitCommunityPrice(
@@ -50,7 +51,6 @@ class PriceApiController extends Controller
                     'submitted_price' => $priceData['price'],
                     'price' => $price->price,
                     'status' => $price->status,
-                    'confidence_score' => $price->confidence_score,
                     'confidence_level' => $price->confidence_level,
                 ];
             }
@@ -84,9 +84,9 @@ class PriceApiController extends Controller
     {
         $request->validate([
             'server_id' => 'required|exists:servers,id',
-            'prices' => 'required|array',
+            'prices' => 'required|array|min:1|max:500',
             'prices.*.item_name' => 'required|string',
-            'prices.*.price' => 'required|integer|min:0',
+            'prices.*.price' => 'required|integer|min:1|max:999999999',
         ]);
 
         $serverId = $request->input('server_id');
@@ -95,30 +95,40 @@ class PriceApiController extends Controller
 
         DB::beginTransaction();
         try {
+            $resolvedPrices = [];
             foreach ($request->prices as $priceData) {
-                $item = Item::where('name', 'like', $priceData['item_name'])->first();
+                $itemName = trim($priceData['item_name']);
+                $item = Item::whereRaw('LOWER(name) = LOWER(?)', [$itemName])->first();
 
                 if (! $item) {
-                    $notFound[] = $priceData['item_name'];
+                    $notFound[] = $itemName;
 
                     continue;
                 }
+
+                $resolvedPrices[$item->id] = [
+                    'item' => $item,
+                    'price' => $priceData['price'],
+                ];
+            }
+
+            foreach ($resolvedPrices as $resolvedPrice) {
+                $item = $resolvedPrice['item'];
 
                 $price = $this->priceSubmissionService->submitCommunityPrice(
                     $request->user(),
                     $item->id,
                     $serverId,
-                    $priceData['price'],
+                    $resolvedPrice['price'],
                 );
 
                 $updatedPrices[] = [
                     'item_id' => $item->id,
                     'item_name' => $item->name,
                     'server_id' => $serverId,
-                    'submitted_price' => $priceData['price'],
+                    'submitted_price' => $resolvedPrice['price'],
                     'price' => $price->price,
                     'status' => $price->status,
-                    'confidence_score' => $price->confidence_score,
                     'confidence_level' => $price->confidence_level,
                 ];
             }

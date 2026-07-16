@@ -8,6 +8,10 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ItemPrice extends Model
 {
+    protected $hidden = [
+        'confidence_score',
+    ];
+
     protected $fillable = [
         'server_id',
         'item_id',

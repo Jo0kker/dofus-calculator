@@ -95,16 +95,17 @@ class PriceController extends Controller
     {
         $validated = $request->validate([
             'server_id' => 'required|exists:servers,id',
-            'prices' => 'required|array',
+            'prices' => 'required|array|min:1|max:500',
             'prices.*.item_id' => 'required|exists:items,id',
             'prices.*.price' => 'required|integer|min:1|max:999999999',
             'price_mode' => ['sometimes', Rule::in(['community', 'personal'])],
         ]);
 
         DB::transaction(function () use ($request, $validated) {
-            $mode = $validated['price_mode'] ?? 'community';
+            $mode = $validated['price_mode'] ?? $request->user()->price_mode ?? 'community';
+            $prices = collect($validated['prices'])->keyBy('item_id')->values();
 
-            foreach ($validated['prices'] as $priceData) {
+            foreach ($prices as $priceData) {
                 if ($mode === 'personal') {
                     $this->priceSubmissionService->submitPersonalPrice(
                         $request->user(),

@@ -7,6 +7,17 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class PriceHistory extends Model
 {
+    protected $hidden = [
+        'plausibility_score',
+        'reliability_snapshot',
+        'consensus_deviation',
+        'influence_weight',
+        'evaluation_score',
+        'evaluation_weight',
+        'evaluated_at',
+        'rejected_at',
+    ];
+
     protected $fillable = [
         'server_id',
         'item_id',

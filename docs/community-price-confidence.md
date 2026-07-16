@@ -43,6 +43,12 @@ La fiabilité commence avec un a priori neutre de 60 %, pondéré comme cinq év
 
 Un signalement visant un consensus multi-contributeurs n’est jamais attribué arbitrairement à son dernier contributeur. Une modération plus fine des observations individuelles pourra être ajoutée ensuite.
 
+## Contrat public
+
+La fiabilité d’une personne, ses évaluations, la plausibilité individuelle et son poids restent internes. Les réponses web, bureau et API n’exposent que la confiance du prix, le volume de preuves récentes, la date réelle du dernier relevé et des raisons qualitatives.
+
+Le badge « Contributeur communautaire » est identique pour tout le monde. Il indique une présence humaine et ne dépend d’aucun score, seuil ou niveau caché.
+
 ## Recalcul et exploitation
 
 Le consensus est recalculé à chaque nouveau relevé et quotidiennement à 03:30 avec :

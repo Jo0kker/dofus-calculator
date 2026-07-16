@@ -8,6 +8,7 @@ use App\Models\PriceReport;
 use App\Models\User;
 use App\Services\CommunityPriceTrustService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PriceReportController extends Controller
 {
@@ -48,6 +49,7 @@ class PriceReportController extends Controller
             'reported_by' => auth()->id(),
             'comment' => $request->comment,
         ]);
+        $this->syncPendingReports($itemPrice);
 
         return back()->with('success', 'Prix signalé avec succès. Merci pour votre contribution !');
     }
@@ -81,15 +83,29 @@ class PriceReportController extends Controller
             abort(403);
         }
 
-        $report->update([
-            'status' => 'reviewed',
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-        ]);
+        $processed = DB::transaction(function () use ($report, $request) {
+            $lockedReport = PriceReport::query()->lockForUpdate()->findOrFail($report->id);
+            if ($lockedReport->status !== 'pending') {
+                return false;
+            }
 
-        // Un report validé devient un signal fort pour la fiabilité du relevé concerné.
-        if ($request->input('action') === 'reject_price') {
-            $this->rejectPrice($report);
+            $lockedReport->update([
+                'status' => 'reviewed',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+            // Un report validé devient un signal fort pour la fiabilité du relevé concerné.
+            if ($request->input('action') === 'reject_price') {
+                $this->rejectPrice($lockedReport);
+            }
+            $this->syncPendingReports($lockedReport->itemPrice);
+
+            return true;
+        });
+
+        if (! $processed) {
+            return back()->with('success', 'Ce signalement avait déjà été traité.');
         }
 
         return back()->with('success', 'Signalement traité avec succès.');
@@ -101,11 +117,18 @@ class PriceReportController extends Controller
             abort(403);
         }
 
-        $report->update([
-            'status' => 'dismissed',
-            'reviewed_by' => auth()->id(),
-            'reviewed_at' => now(),
-        ]);
+        $dismissed = PriceReport::query()
+            ->whereKey($report->id)
+            ->where('status', 'pending')
+            ->update([
+                'status' => 'dismissed',
+                'reviewed_by' => auth()->id(),
+                'reviewed_at' => now(),
+            ]);
+
+        if ($dismissed) {
+            $this->syncPendingReports($report->itemPrice);
+        }
 
         return back()->with('success', 'Signalement rejeté.');
     }
@@ -124,5 +147,24 @@ class PriceReportController extends Controller
         }
 
         $this->trustService->rejectObservation($report->priceHistory);
+    }
+
+    private function syncPendingReports(ItemPrice $itemPrice): void
+    {
+        $pendingCount = PriceReport::query()
+            ->where('item_price_id', $itemPrice->id)
+            ->where('status', 'pending')
+            ->count();
+
+        $attributes = ['reports_count' => $pendingCount];
+        if ($itemPrice->status === ItemPrice::STATUS_APPROVED
+            && $pendingCount >= ItemPrice::REPORT_THRESHOLD) {
+            $attributes['status'] = ItemPrice::STATUS_PENDING_REVIEW;
+        } elseif ($itemPrice->status === ItemPrice::STATUS_PENDING_REVIEW
+            && $pendingCount < ItemPrice::REPORT_THRESHOLD) {
+            $attributes['status'] = ItemPrice::STATUS_APPROVED;
+        }
+
+        $itemPrice->update($attributes);
     }
 }

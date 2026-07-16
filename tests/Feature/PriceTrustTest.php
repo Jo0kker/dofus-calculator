@@ -31,7 +31,32 @@ it('publishes the first community observation immediately with low confidence', 
         ->and($price->confidence_score)->toBeLessThanOrEqual(39)
         ->and($price->recent_contributors_count)->toBe(1)
         ->and($price->recent_observations_count)->toBe(1)
-        ->and($price->confidence_details['reason_codes'])->toContain('single_contributor');
+        ->and($price->confidence_details['reason_codes'])->toContain('single_contributor')
+        ->and($price->confidence_details)->not->toHaveKeys([
+            'average_reliability_score',
+            'latest_plausibility_score',
+            'effective_contributors',
+            'experienced_contributors',
+        ])
+        ->and(PriceHistory::firstOrFail()->toArray())->not->toHaveKeys([
+            'reliability_snapshot',
+            'plausibility_score',
+            'influence_weight',
+            'evaluation_score',
+        ]);
+});
+
+it('keeps internal trust metrics out of the public price api', function () {
+    $user = User::factory()->create(['created_at' => now()->subYear()]);
+    $this->submissionService->submitCommunityPrice($user, $this->item->id, $this->server->id, 1200);
+
+    $this->getJson("/api/items/{$this->item->id}?include=prices&server_id={$this->server->id}")
+        ->assertOk()
+        ->assertJsonPath('data.prices.0.confidence_level', 'low')
+        ->assertJsonMissingPath('data.prices.0.confidence_score')
+        ->assertJsonMissingPath('data.prices.0.confidence_details.average_reliability_score')
+        ->assertJsonMissingPath('data.prices.0.confidence_details.latest_plausibility_score')
+        ->assertJsonMissingPath('data.prices.0.confidence_details.effective_contributors');
 });
 
 it('counts repeated observations but gives one contributor only one influence', function () {
@@ -44,6 +69,38 @@ it('counts repeated observations but gives one contributor only one influence', 
         ->and($price->recent_observations_count)->toBe(2)
         ->and($price->recent_contributors_count)->toBe(1)
         ->and(PriceHistory::count())->toBe(2);
+});
+
+it('selects the latest observation per contributor before handling a noisy history', function () {
+    $honestUsers = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
+    $attacker = User::factory()->create(['created_at' => now()->subYear()]);
+
+    foreach ($honestUsers as $index => $user) {
+        PriceHistory::create([
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => 1000 + $index,
+            'created_by' => $user->id,
+        ]);
+    }
+
+    $rows = [];
+    foreach (range(1, 501) as $index) {
+        $rows[] = [
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => 100000 + $index,
+            'created_by' => $attacker->id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+    }
+    PriceHistory::insert($rows);
+
+    $price = $this->trustService->recalculate($this->item->id, $this->server->id);
+
+    expect($price->recent_contributors_count)->toBe(4)
+        ->and($price->price)->toBeLessThan(2000);
 });
 
 it('keeps an implausible outlier from dominating the community consensus', function () {
@@ -109,8 +166,20 @@ it('prevents only new unevaluated accounts from creating high confidence', funct
     }
 
     expect($price->confidence_level)->not->toBe('high')
-        ->and($price->confidence_score)->toBeLessThanOrEqual(69)
-        ->and($price->confidence_details['experienced_contributors'])->toBe(0);
+        ->and($price->confidence_score)->toBeLessThanOrEqual(69);
+});
+
+it('does not score a contributor against an ambiguous independent reference', function () {
+    $users = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
+
+    $this->submissionService->submitCommunityPrice($users[0], $this->item->id, $this->server->id, 100);
+    $this->submissionService->submitCommunityPrice($users[1], $this->item->id, $this->server->id, 10000);
+    $this->submissionService->submitCommunityPrice($users[2], $this->item->id, $this->server->id, 10000);
+
+    expect($users[0]->fresh()->price_reliability_samples)->toBe(1)
+        ->and($users[0]->fresh()->price_reliability_score)->toBeLessThan(60)
+        ->and($users[1]->fresh()->price_reliability_samples)->toBe(0)
+        ->and($users[2]->fresh()->price_reliability_samples)->toBe(0);
 });
 
 it('removes a rejected observation from the consensus and penalizes its contributor', function () {
@@ -147,15 +216,19 @@ it('uses a validated moderation report as a reliability signal', function () {
 
     $this->post(route('moderation.reports.approve', $report), ['action' => 'reject_price'])
         ->assertSessionHasNoErrors();
+    $this->post(route('moderation.reports.approve', $report), ['action' => 'reject_price'])
+        ->assertSessionHasNoErrors();
 
     expect($report->fresh()->status)->toBe('reviewed')
         ->and($report->priceHistory->fresh()->rejected_at)->not->toBeNull()
         ->and($contributor->fresh()->price_reliability_score)->toBeLessThan(60)
+        ->and($contributor->fresh()->rejected_prices_count)->toBe(1)
         ->and($price->fresh()->status)->toBe('rejected');
 });
 
-it('does not attach a consensus report to an arbitrary contributor', function () {
+it('keeps a rejected multi-contributor consensus locked during recalculation', function () {
     $users = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
+    $moderator = User::factory()->create(['role' => 'admin']);
     $price = null;
 
     foreach ($users as $user) {
@@ -172,6 +245,53 @@ it('does not attach a consensus report to an arbitrary contributor', function ()
         ->assertSessionHasNoErrors();
 
     expect(PriceReport::firstOrFail()->price_history_id)->toBeNull();
+
+    $report = PriceReport::firstOrFail();
+    $this->actingAs($moderator)
+        ->post(route('moderation.reports.approve', $report), ['action' => 'reject_price'])
+        ->assertSessionHasNoErrors();
+    $this->artisan('prices:recalculate-confidence')->assertSuccessful();
+
+    expect($price->fresh()->status)->toBe('rejected');
+});
+
+it('puts a price under review from three independent pending reports', function () {
+    $contributor = User::factory()->create(['created_at' => now()->subYear()]);
+    $reporters = User::factory()->count(3)->create();
+    $price = $this->submissionService->submitCommunityPrice(
+        $contributor,
+        $this->item->id,
+        $this->server->id,
+        1700,
+    );
+
+    foreach ($reporters as $reporter) {
+        $this->actingAs($reporter)
+            ->post(route('prices.report', $price), ['comment' => 'Prix à vérifier'])
+            ->assertSessionHasNoErrors();
+    }
+
+    expect($price->fresh()->reports_count)->toBe(3)
+        ->and($price->fresh()->status)->toBe('pending_review');
+});
+
+it('keeps the real observation date and zero recent evidence for an old fallback', function () {
+    $user = User::factory()->create(['created_at' => now()->subYear()]);
+    $observedAt = now()->subDays(60)->startOfSecond();
+    $history = PriceHistory::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1600,
+        'created_by' => $user->id,
+    ]);
+    $history->forceFill(['created_at' => $observedAt, 'updated_at' => $observedAt])->save();
+
+    $price = $this->trustService->recalculate($this->item->id, $this->server->id);
+
+    expect($price->recent_observations_count)->toBe(0)
+        ->and($price->recent_contributors_count)->toBe(0)
+        ->and($price->confidence_details['latest_observation_at'])->toBe($observedAt->toISOString())
+        ->and($price->confidence_details['reason_codes'])->toContain('stale_observations');
 });
 
 it('recalculates confidence retroactively from existing price history', function () {

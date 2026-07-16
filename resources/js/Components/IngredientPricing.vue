@@ -47,7 +47,7 @@
                         {{ formatNumber(currentPrice.price) }} K
                     </div>
                     <div class="text-xs text-gray-500">
-                        Mis à jour {{ formatDate(currentPrice.updated_at) }}
+                        Relevé {{ formatDate(currentPriceObservedAt) }}
                     </div>
                 </div>
 
@@ -80,6 +80,7 @@
                         {{ formatContributionCount(communityPrice.user.price_contributions_count) }}
                     </span>
                 </div>
+                <CommunityContributorBadge />
             </div>
         </div>
 
@@ -141,6 +142,7 @@
 import { computed, ref, watch } from 'vue';
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import CommunityContributorBadge from './CommunityContributorBadge.vue';
 import PriceConfidenceBadge from './PriceConfidenceBadge.vue';
 import PriceReportModal from './PriceReportModal.vue';
 
@@ -187,6 +189,9 @@ const currentPrice = computed(() => {
 });
 
 const isUsingPersonalPrice = computed(() => effectivePriceMode.value === 'personal' && Boolean(personalPrice.value));
+const currentPriceObservedAt = computed(() => isUsingPersonalPrice.value
+    ? personalPrice.value?.updated_at
+    : communityPrice.value?.confidence_details?.latest_observation_at || communityPrice.value?.updated_at);
 
 const currentPriceWithItem = computed(() => {
     if (!communityPrice.value) return null;
