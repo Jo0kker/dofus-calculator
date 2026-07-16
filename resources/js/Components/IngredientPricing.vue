@@ -6,12 +6,18 @@
     <div v-else class="space-y-3">
         <div v-if="$page.props.auth?.user" class="space-y-2 rounded-lg border border-gray-200 bg-gray-50 p-2.5">
             <div class="flex items-center justify-between gap-3 text-xs text-gray-500">
-                <span>Source globale actuelle</span>
+                <div>
+                    <div>Mode utilisé pour cet objet</div>
+                    <div class="mt-0.5 text-[10px] text-gray-400">
+                        Réglage global : {{ globalPriceMode === 'personal' ? 'Prix perso' : 'Prix HDV' }}
+                        <span v-if="itemPriceOverride"> · choix spécifique</span>
+                    </div>
+                </div>
                 <span
                     class="rounded-full px-2 py-1 font-medium"
-                    :class="globalPriceMode === 'personal' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
+                    :class="effectivePriceMode === 'personal' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
                 >
-                    {{ globalPriceMode === 'personal' ? 'Prix perso' : 'Prix HDV' }}
+                    {{ effectivePriceMode === 'personal' ? 'Prix perso' : 'Prix HDV' }}
                 </span>
             </div>
 

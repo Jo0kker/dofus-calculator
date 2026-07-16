@@ -71,7 +71,13 @@ const findEffectivePriceForServer = subject => {
 const communityPrice = computed(() => findPriceForServer(item.value?.prices || []));
 const personalPrice = computed(() => findPersonalPriceForServer(item.value));
 const effectivePriceMode = computed(() => itemPriceOverride.value || globalPriceMode.value);
-const currentPrice = computed(() => findEffectivePriceForServer(item.value));
+const currentPrice = computed(() => {
+    if (effectivePriceMode.value === 'personal') {
+        return personalPrice.value || communityPrice.value;
+    }
+
+    return communityPrice.value;
+});
 const isUsingPersonalPrice = computed(() => effectivePriceMode.value === 'personal' && Boolean(personalPrice.value));
 const directPrice = computed(() => currentPrice.value ? Number(currentPrice.value.price) : null);
 const normalizedCraftQuantity = computed(() => Math.max(1, Number(craftQuantity.value || 1)));
@@ -444,7 +450,15 @@ onMounted(loadItem);
                             <label class="block border border-[#c8c1aa] bg-[#eee9d4] p-1.5 text-[10px] text-slate-700">
                                 <span class="mb-1 flex items-center justify-between gap-2">
                                     <strong>Source pour cet objet</strong>
-                                    <span>Global : {{ globalPriceMode === 'personal' ? 'Perso' : 'HDV' }}</span>
+                                    <span
+                                        class="rounded-full px-1.5 py-0.5 font-bold"
+                                        :class="effectivePriceMode === 'personal' ? 'bg-violet-100 text-violet-700' : 'bg-blue-100 text-blue-700'"
+                                    >
+                                        {{ effectivePriceMode === 'personal' ? 'Prix perso' : 'Prix HDV' }}
+                                    </span>
+                                </span>
+                                <span class="mb-1 block text-[9px] text-slate-500">
+                                    Global : {{ globalPriceMode === 'personal' ? 'Perso' : 'HDV' }}<template v-if="itemPriceOverride"> · choix spécifique</template>
                                 </span>
                                 <select
                                     v-model="itemPriceOverride"
