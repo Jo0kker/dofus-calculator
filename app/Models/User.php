@@ -52,6 +52,9 @@ class User extends Authenticatable
         'remember_token',
         'two_factor_recovery_codes',
         'two_factor_secret',
+        'price_reliability_score',
+        'price_reliability_samples',
+        'price_reliability_updated_at',
     ];
 
     /**

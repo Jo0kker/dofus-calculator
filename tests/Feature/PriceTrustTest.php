@@ -81,6 +81,20 @@ it('learns contributor reliability only from independently comparable observatio
         ->and($learnedUser->price_reliability_score)->toBeGreaterThan(60);
 });
 
+it('counts distinct item markets rather than repeated updates as reliability samples', function () {
+    $users = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
+
+    $this->submissionService->submitCommunityPrice($users[0], $this->item->id, $this->server->id, 1000);
+    $this->submissionService->submitCommunityPrice($users[1], $this->item->id, $this->server->id, 1010);
+    $this->submissionService->submitCommunityPrice($users[2], $this->item->id, $this->server->id, 990);
+
+    $this->submissionService->submitCommunityPrice($users[0], $this->item->id, $this->server->id, 1005);
+    $this->submissionService->submitCommunityPrice($users[0], $this->item->id, $this->server->id, 1002);
+
+    expect($users[0]->fresh()->price_reliability_samples)->toBe(1)
+        ->and(PriceHistory::query()->where('created_by', $users[0]->id)->count())->toBe(3);
+});
+
 it('prevents only new unevaluated accounts from creating high confidence', function () {
     $users = User::factory()->count(10)->create(['created_at' => now()]);
     $price = null;

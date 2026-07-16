@@ -109,7 +109,20 @@ class CommunityPriceTrustService
             ->whereNotNull('evaluated_at')
             ->whereNotNull('evaluation_score')
             ->where('created_at', '>=', now()->subDays(self::RELIABILITY_WINDOW_DAYS))
-            ->get(['evaluation_score', 'evaluation_weight', 'created_at']);
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->get([
+                'id',
+                'server_id',
+                'item_id',
+                'evaluation_score',
+                'evaluation_weight',
+                'created_at',
+            ])
+            // Mettre à jour plusieurs fois le même marché ne crée pas
+            // artificiellement de nouvelles preuves de fiabilité.
+            ->unique(fn (PriceHistory $evaluation) => "{$evaluation->server_id}:{$evaluation->item_id}")
+            ->values();
 
         $weightedScore = self::RELIABILITY_PRIOR_SCORE * self::RELIABILITY_PRIOR_WEIGHT;
         $totalWeight = self::RELIABILITY_PRIOR_WEIGHT;

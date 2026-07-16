@@ -118,8 +118,10 @@ it('exposes the current contributor and their historical contribution count with
             ->component('Items/Show')
             ->where('item.prices.0.user.name', $this->user->name)
             ->where('item.prices.0.user.price_contributions_count', 3)
-            ->where('item.prices.0.user.price_reliability_score', 60)
-            ->where('item.prices.0.user.price_reliability_samples', 0)
+            ->missing('item.prices.0.user.price_reliability_score')
+            ->missing('item.prices.0.user.price_reliability_samples')
+            ->missing('auth.user.price_reliability_score')
+            ->missing('auth.user.price_reliability_samples')
             ->missing('item.prices.0.user.email')
         );
 });

@@ -2,7 +2,6 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
-import ContributorReliabilityBadge from '@/Components/ContributorReliabilityBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
 import PriceConfidenceBadge from '@/Components/PriceConfidenceBadge.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
@@ -465,7 +464,6 @@ onMounted(loadItem);
                                 <p>
                                     Dernier relevé par <strong>{{ communityPrice.user.name }}</strong> · {{ formatNumber(communityPrice.user.price_contributions_count) }} contribution(s)
                                 </p>
-                                <ContributorReliabilityBadge :user="communityPrice.user" />
                             </div>
 
                             <form class="flex gap-1" @submit.prevent="savePrice">

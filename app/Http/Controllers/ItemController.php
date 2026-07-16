@@ -61,8 +61,6 @@ class ItemController extends Controller
                             'id',
                             'name',
                             'price_contributions_count',
-                            'price_reliability_score',
-                            'price_reliability_samples',
                         ])]);
             },
             'recipe.ingredients.recipe', // Pour savoir si l'ingrédient est craftable
@@ -77,8 +75,6 @@ class ItemController extends Controller
                             'id',
                             'name',
                             'price_contributions_count',
-                            'price_reliability_score',
-                            'price_reliability_samples',
                         ])]);
             },
             'priceHistories' => function ($query) use ($selectedServerId) {
@@ -92,8 +88,6 @@ class ItemController extends Controller
                             'id',
                             'name',
                             'price_contributions_count',
-                            'price_reliability_score',
-                            'price_reliability_samples',
                         ])]);
             },
         ];

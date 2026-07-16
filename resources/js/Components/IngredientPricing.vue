@@ -80,7 +80,6 @@
                         {{ formatContributionCount(communityPrice.user.price_contributions_count) }}
                     </span>
                 </div>
-                <ContributorReliabilityBadge :user="communityPrice.user" />
             </div>
         </div>
 
@@ -142,7 +141,6 @@
 import { computed, ref, watch } from 'vue';
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { useServerSelection } from '@/Composables/useServerSelection';
-import ContributorReliabilityBadge from './ContributorReliabilityBadge.vue';
 import PriceConfidenceBadge from './PriceConfidenceBadge.vue';
 import PriceReportModal from './PriceReportModal.vue';
 

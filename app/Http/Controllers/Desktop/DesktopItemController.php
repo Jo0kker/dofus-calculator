@@ -63,7 +63,7 @@ class DesktopItemController extends Controller
             }
             $query->orderBy('updated_at', 'desc')->with([
                 'server',
-                'user:id,name,price_contributions_count,price_reliability_score,price_reliability_samples',
+                'user:id,name,price_contributions_count',
             ]);
         };
 
@@ -158,8 +158,6 @@ class DesktopItemController extends Controller
             'user' => $price->user ? [
                 'name' => $price->user->name,
                 'price_contributions_count' => $price->user->price_contributions_count,
-                'price_reliability_score' => $price->user->price_reliability_score,
-                'price_reliability_samples' => $price->user->price_reliability_samples,
             ] : null,
         ];
     }

@@ -39,7 +39,7 @@ Le prix reste toutefois publié immédiatement. L’interface explique pourquoi 
 
 Un relevé n’est évalué automatiquement que lorsqu’au moins trois contributeurs indépendants sont disponibles. Sa référence est calculée sans son propre relevé (`leave-one-out`), afin d’éviter qu’il valide lui-même sa valeur.
 
-La fiabilité commence avec un a priori neutre de 60 %, pondéré comme cinq évaluations. Les évaluations récentes comptent davantage et la valeur publique reste « en apprentissage » avant trois évaluations. Un signalement validé par la modération constitue un signal négatif fort lorsque le prix affiché provient d’un seul contributeur.
+La fiabilité commence avec un a priori neutre de 60 %, pondéré comme cinq évaluations. Les évaluations récentes comptent davantage et une seule évaluation active est retenue par couple objet/serveur : répéter le même relevé ne permet donc pas de fabriquer de l’expérience. Cette valeur reste interne et n’est jamais exposée dans les interfaces ou leurs réponses. Un signalement validé par la modération constitue un signal négatif fort lorsque le prix affiché provient d’un seul contributeur.
 
 Un signalement visant un consensus multi-contributeurs n’est jamais attribué arbitrairement à son dernier contributeur. Une modération plus fine des observations individuelles pourra être ajoutée ensuite.
 
