@@ -146,6 +146,9 @@ it('returns a desktop item inspector payload', function () {
         ->assertJsonPath('item.recipe.ingredients.0.pivot.quantity', 10)
         ->assertJsonPath('item.prices.0.user.name', $user->name)
         ->assertJsonPath('item.prices.0.user.price_contributions_count', 12)
+        ->assertJsonPath('item.prices.0.user.price_reliability_score', 60)
+        ->assertJsonPath('item.prices.0.user.price_reliability_samples', 0)
+        ->assertJsonPath('item.prices.0.confidence_level', 'low')
         ->assertJsonPath('item.personal_prices.0.price', 950)
         ->assertJsonPath('item.price_preferences.0.mode', 'personal')
         ->assertJsonStructure([

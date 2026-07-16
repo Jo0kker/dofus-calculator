@@ -21,3 +21,8 @@ Schedule::call(function () {
 })->name('import-recipes-daily')
     ->dailyAt('04:00')
     ->withoutOverlapping();
+
+Schedule::command('prices:recalculate-confidence')
+    ->name('recalculate-price-confidence-daily')
+    ->dailyAt('03:30')
+    ->withoutOverlapping();

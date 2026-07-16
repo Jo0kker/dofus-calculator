@@ -42,7 +42,7 @@ class PriceController extends Controller
 
         $message = $validated['price_mode'] === 'personal'
             ? 'Prix personnel enregistré avec succès'
-            : 'Prix communautaire mis à jour avec succès';
+            : 'Relevé communautaire pris en compte dans le consensus';
 
         return back()->with('success', $message);
     }

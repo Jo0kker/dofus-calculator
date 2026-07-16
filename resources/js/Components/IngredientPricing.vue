@@ -62,16 +62,25 @@
                 </button>
             </div>
 
+            <PriceConfidenceBadge
+                v-if="!isUsingPersonalPrice && communityPrice"
+                :price="communityPrice"
+                class="mt-3"
+            />
+
             <div
                 v-if="!isUsingPersonalPrice && communityPrice?.user"
-                class="mt-3 flex items-center justify-between rounded-md bg-blue-50 px-2.5 py-2 text-xs text-blue-900"
+                class="mt-3 space-y-1.5 rounded-md bg-blue-50 px-2.5 py-2 text-xs text-blue-900"
             >
-                <span>
-                    Proposé par <strong>{{ communityPrice.user.name }}</strong>
-                </span>
-                <span class="rounded-full bg-white px-2 py-1 font-semibold text-blue-700">
-                    {{ formatContributionCount(communityPrice.user.price_contributions_count) }}
-                </span>
+                <div class="flex flex-wrap items-center justify-between gap-2">
+                    <span>
+                        Dernier relevé par <strong>{{ communityPrice.user.name }}</strong>
+                    </span>
+                    <span class="rounded-full bg-white px-2 py-1 font-semibold text-blue-700">
+                        {{ formatContributionCount(communityPrice.user.price_contributions_count) }}
+                    </span>
+                </div>
+                <ContributorReliabilityBadge :user="communityPrice.user" />
             </div>
         </div>
 
@@ -133,6 +142,8 @@
 import { computed, ref, watch } from 'vue';
 import { Link, router, useForm, usePage } from '@inertiajs/vue3';
 import { useServerSelection } from '@/Composables/useServerSelection';
+import ContributorReliabilityBadge from './ContributorReliabilityBadge.vue';
+import PriceConfidenceBadge from './PriceConfidenceBadge.vue';
 import PriceReportModal from './PriceReportModal.vue';
 
 const props = defineProps({

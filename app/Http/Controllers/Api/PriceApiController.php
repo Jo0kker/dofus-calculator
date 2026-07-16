@@ -47,8 +47,11 @@ class PriceApiController extends Controller
                     'item_id' => $item->id,
                     'item_name' => $item->name,
                     'server_id' => $serverId,
+                    'submitted_price' => $priceData['price'],
                     'price' => $price->price,
                     'status' => $price->status,
+                    'confidence_score' => $price->confidence_score,
+                    'confidence_level' => $price->confidence_level,
                 ];
             }
 
@@ -112,8 +115,11 @@ class PriceApiController extends Controller
                     'item_id' => $item->id,
                     'item_name' => $item->name,
                     'server_id' => $serverId,
+                    'submitted_price' => $priceData['price'],
                     'price' => $price->price,
                     'status' => $price->status,
+                    'confidence_score' => $price->confidence_score,
+                    'confidence_level' => $price->confidence_level,
                 ];
             }
 

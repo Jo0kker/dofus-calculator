@@ -2,7 +2,9 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
 import { usePage } from '@inertiajs/vue3';
+import ContributorReliabilityBadge from '@/Components/ContributorReliabilityBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
+import PriceConfidenceBadge from '@/Components/PriceConfidenceBadge.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 
 const props = defineProps({
@@ -291,7 +293,7 @@ const reportPrice = async () => {
 
     try {
         await axios.post(`/prices/${communityPrice.value.id}/report`, {
-            reason: reportComment.value,
+            comment: reportComment.value,
         });
         reportComment.value = '';
         reportMessage.value = 'Signalement envoyé.';
@@ -454,9 +456,17 @@ onMounted(loadItem);
                             <p v-if="effectivePriceMode === 'personal' && !personalPrice && communityPrice" class="text-[10px] text-slate-500">
                                 Aucun prix perso : le prix HDV est utilisé en repli.
                             </p>
-                            <p v-if="!isUsingPersonalPrice && communityPrice?.user" class="text-[10px] text-slate-600">
-                                Proposé par <strong>{{ communityPrice.user.name }}</strong> · {{ formatNumber(communityPrice.user.price_contributions_count) }} contribution(s)
-                            </p>
+                            <PriceConfidenceBadge
+                                v-if="!isUsingPersonalPrice && communityPrice"
+                                :price="communityPrice"
+                                compact
+                            />
+                            <div v-if="!isUsingPersonalPrice && communityPrice?.user" class="space-y-1 text-[10px] text-slate-600">
+                                <p>
+                                    Dernier relevé par <strong>{{ communityPrice.user.name }}</strong> · {{ formatNumber(communityPrice.user.price_contributions_count) }} contribution(s)
+                                </p>
+                                <ContributorReliabilityBadge :user="communityPrice.user" />
+                            </div>
 
                             <form class="flex gap-1" @submit.prevent="savePrice">
                                 <input v-model="priceInput" type="number" min="1" required class="compact-input flex-1" :placeholder="effectivePriceMode === 'personal' ? 'Prix perso' : 'Prix HDV'" />

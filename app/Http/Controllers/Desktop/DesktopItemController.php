@@ -63,7 +63,7 @@ class DesktopItemController extends Controller
             }
             $query->orderBy('updated_at', 'desc')->with([
                 'server',
-                'user:id,name,price_contributions_count',
+                'user:id,name,price_contributions_count,price_reliability_score,price_reliability_samples',
             ]);
         };
 
@@ -149,9 +149,17 @@ class DesktopItemController extends Controller
                 'name' => $price->server->name,
             ] : null,
             'updated_at' => $price->updated_at?->toISOString(),
+            'confidence_score' => $price->confidence_score,
+            'confidence_level' => $price->confidence_level,
+            'recent_observations_count' => $price->recent_observations_count,
+            'recent_contributors_count' => $price->recent_contributors_count,
+            'confidence_details' => $price->confidence_details,
+            'confidence_computed_at' => $price->confidence_computed_at?->toISOString(),
             'user' => $price->user ? [
                 'name' => $price->user->name,
                 'price_contributions_count' => $price->user->price_contributions_count,
+                'price_reliability_score' => $price->user->price_reliability_score,
+                'price_reliability_samples' => $price->user->price_reliability_samples,
             ] : null,
         ];
     }

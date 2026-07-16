@@ -10,31 +10,21 @@ use App\Models\UserItemPricePreference;
 
 class PriceSubmissionService
 {
+    public function __construct(private readonly CommunityPriceTrustService $trustService) {}
+
     public function submitCommunityPrice(User $user, int $itemId, int $serverId, int $price): ItemPrice
     {
-        $itemPrice = ItemPrice::updateOrCreate(
-            [
-                'item_id' => $itemId,
-                'server_id' => $serverId,
-            ],
-            [
-                'price' => $price,
-                'created_by' => $user->id,
-                'status' => ItemPrice::STATUS_APPROVED,
-                'reports_count' => 0,
-            ]
-        );
-
         PriceHistory::create([
             'item_id' => $itemId,
             'server_id' => $serverId,
             'price' => $price,
             'created_by' => $user->id,
+            'reliability_snapshot' => $user->price_reliability_score ?? 60,
         ]);
 
         $user->increment('price_contributions_count');
 
-        return $itemPrice;
+        return $this->trustService->recalculate($itemId, $serverId);
     }
 
     public function submitPersonalPrice(User $user, int $itemId, int $serverId, int $price): PersonalItemPrice

@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\ItemPrice;
+use App\Models\PriceHistory;
 use App\Models\PriceReport;
+use App\Models\User;
+use App\Services\CommunityPriceTrustService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class PriceReportController extends Controller
 {
+    public function __construct(private readonly CommunityPriceTrustService $trustService) {}
+
     public function store(ItemPrice $itemPrice, Request $request)
     {
         $request->validate([
@@ -25,12 +29,18 @@ class PriceReportController extends Controller
             return back()->withErrors(['report' => 'Vous avez déjà un signalement en attente pour ce prix.']);
         }
 
-        // Trouver l'entrée PriceHistory qui correspond au prix actuel signalé
-        $currentPriceHistory = \App\Models\PriceHistory::where('item_id', $itemPrice->item_id)
-            ->where('server_id', $itemPrice->server_id)
-            ->where('price', $itemPrice->price)
-            ->orderBy('created_at', 'desc')
-            ->first();
+        // Un report sur un consensus multi-contributeurs ne doit pas pénaliser
+        // arbitrairement un seul utilisateur. On ne rattache donc un relevé
+        // individuel que lorsqu'il est l'unique source du prix affiché.
+        $currentPriceHistory = null;
+        if ($itemPrice->recent_contributors_count <= 1) {
+            $currentPriceHistory = PriceHistory::where('item_id', $itemPrice->item_id)
+                ->where('server_id', $itemPrice->server_id)
+                ->where('price', $itemPrice->price)
+                ->whereNull('rejected_at')
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
 
         PriceReport::create([
             'item_price_id' => $itemPrice->id,
@@ -45,7 +55,7 @@ class PriceReportController extends Controller
     public function index(Request $request)
     {
         // Vérifier que l'utilisateur peut modérer
-        if (!auth()->user()->canModerate()) {
+        if (! auth()->user()->canModerate()) {
             abort(403, 'Accès refusé. Vous devez être modérateur ou administrateur.');
         }
 
@@ -67,7 +77,7 @@ class PriceReportController extends Controller
 
     public function approve(PriceReport $report, Request $request)
     {
-        if (!auth()->user()->canModerate()) {
+        if (! auth()->user()->canModerate()) {
             abort(403);
         }
 
@@ -77,7 +87,7 @@ class PriceReportController extends Controller
             'reviewed_at' => now(),
         ]);
 
-        // Si le report est approuvé, on rejette le prix et on restaure le prix précédent si nécessaire
+        // Un report validé devient un signal fort pour la fiabilité du relevé concerné.
         if ($request->input('action') === 'reject_price') {
             $this->rejectPrice($report);
         }
@@ -87,7 +97,7 @@ class PriceReportController extends Controller
 
     public function dismiss(PriceReport $report)
     {
-        if (!auth()->user()->canModerate()) {
+        if (! auth()->user()->canModerate()) {
             abort(403);
         }
 
@@ -100,46 +110,19 @@ class PriceReportController extends Controller
         return back()->with('success', 'Signalement rejeté.');
     }
 
-    private function rejectPrice($report)
+    private function rejectPrice(PriceReport $report): void
     {
-        // Le $report contient la relation vers le prix exact qui a été signalé
-        if (!$report->priceHistory) {
-            // Fallback si pas de PriceHistory
+        if (! $report->priceHistory) {
             $report->itemPrice->update(['status' => 'rejected']);
+
             return;
         }
 
-        // Incrémenter le compteur pour l'utilisateur qui avait soumis ce prix spécifique
         if ($report->priceHistory->created_by) {
-            \App\Models\User::where('id', $report->priceHistory->created_by)
+            User::where('id', $report->priceHistory->created_by)
                 ->increment('rejected_prices_count');
         }
 
-        // Chercher le prix le plus récent qui n'est PAS celui qui a été signalé
-        // ET qui n'est pas non plus un prix qui a été signalé dans un autre rapport traité
-        $excludedPriceHistoryIds = PriceReport::where('item_price_id', $report->itemPrice->id)
-            ->whereIn('status', ['reviewed', 'dismissed'])
-            ->whereNotNull('price_history_id')
-            ->pluck('price_history_id')
-            ->push($report->priceHistory->id) // Inclure aussi le prix actuel signalé
-            ->toArray();
-
-        $alternativePriceHistory = \App\Models\PriceHistory::where('item_id', $report->itemPrice->item_id)
-            ->where('server_id', $report->itemPrice->server_id)
-            ->whereNotIn('id', $excludedPriceHistoryIds) // Exclure tous les prix déjà signalés
-            ->orderBy('created_at', 'desc')
-            ->first();
-
-        if ($alternativePriceHistory) {
-            // Restaurer le prix alternatif dans ItemPrice (le plus récent qui n'est pas celui signalé)
-            $report->itemPrice->update([
-                'price' => $alternativePriceHistory->price,
-                'status' => 'approved',
-                'created_by' => $alternativePriceHistory->created_by,
-            ]);
-        } else {
-            // Pas d'autre prix, on marque juste comme rejeté
-            $report->itemPrice->update(['status' => 'rejected']);
-        }
+        $this->trustService->rejectObservation($report->priceHistory);
     }
 }

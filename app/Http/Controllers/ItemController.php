@@ -57,7 +57,13 @@ class ItemController extends Controller
                 }
                 $query->orderBy('updated_at', 'desc')
                     ->with(['server', 'user' => fn ($query) => $query
-                        ->select(['id', 'name', 'price_contributions_count'])]);
+                        ->select([
+                            'id',
+                            'name',
+                            'price_contributions_count',
+                            'price_reliability_score',
+                            'price_reliability_samples',
+                        ])]);
             },
             'recipe.ingredients.recipe', // Pour savoir si l'ingrédient est craftable
             'prices' => function ($query) use ($selectedServerId) {
@@ -67,7 +73,13 @@ class ItemController extends Controller
                 }
                 $query->orderBy('updated_at', 'desc')
                     ->with(['server', 'user' => fn ($query) => $query
-                        ->select(['id', 'name', 'price_contributions_count'])]);
+                        ->select([
+                            'id',
+                            'name',
+                            'price_contributions_count',
+                            'price_reliability_score',
+                            'price_reliability_samples',
+                        ])]);
             },
             'priceHistories' => function ($query) use ($selectedServerId) {
                 if ($selectedServerId) {
@@ -76,7 +88,13 @@ class ItemController extends Controller
                 $query->orderBy('created_at', 'desc')
                     ->limit(30)
                     ->with(['server', 'user' => fn ($query) => $query
-                        ->select(['id', 'name', 'price_contributions_count'])]);
+                        ->select([
+                            'id',
+                            'name',
+                            'price_contributions_count',
+                            'price_reliability_score',
+                            'price_reliability_samples',
+                        ])]);
             },
         ];
 

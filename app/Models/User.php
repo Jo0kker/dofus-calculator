@@ -37,6 +37,9 @@ class User extends Authenticatable
         'role',
         'interface_mode',
         'price_mode',
+        'price_reliability_score',
+        'price_reliability_samples',
+        'price_reliability_updated_at',
     ];
 
     /**
@@ -71,6 +74,9 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'price_contributions_count' => 'integer',
+            'price_reliability_score' => 'integer',
+            'price_reliability_samples' => 'integer',
+            'price_reliability_updated_at' => 'datetime',
         ];
     }
 
