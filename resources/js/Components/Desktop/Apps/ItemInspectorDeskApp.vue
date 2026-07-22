@@ -1,5 +1,6 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
+import { usePage } from '@inertiajs/vue3';
 import axios from 'axios';
 import CommunityContributorBadge from '@/Components/CommunityContributorBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
@@ -16,6 +17,7 @@ const props = defineProps({
 
 const emit = defineEmits(['open-app']);
 
+const page = usePage();
 const { selectedServerId, isServerSelected } = useServerSelection();
 
 const loading = ref(false);
@@ -458,6 +460,9 @@ const saveItemPriceMode = async () => {
             price_mode: itemPriceOverride.value || null,
         });
         await loadItem();
+    } catch {
+        itemPriceOverride.value = normalizeItemPreference(findPreferenceForServer(item.value)?.mode);
+        priceMessage.value = 'Mode non enregistré.';
     } finally {
         preferenceSaving.value = false;
     }
@@ -473,9 +478,10 @@ const setItemPriceMode = mode => {
 
 watch(() => props.payload.itemId, loadItem);
 watch(selectedServerId, () => {
-    itemPriceOverride.value = normalizeItemPreference(findPreferenceForServer(item.value)?.mode);
-    loadOptimizedCalculation();
+    itemPriceOverride.value = '';
+    optimizedCalculation.value = null;
 });
+watch(() => page.props.selected_server_id, loadItem);
 watch(calculationMode, () => loadOptimizedCalculation());
 watch(item, initializeIncludedIngredients);
 onMounted(loadItem);

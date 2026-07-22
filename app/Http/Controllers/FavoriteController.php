@@ -12,10 +12,23 @@ class FavoriteController extends Controller
 {
     public function index(Request $request)
     {
-        $serverId = session('selected_server_id');
+        $user = $request->user();
+        $serverId = $user->server_id ?: session('selected_server_id');
         $server = Server::find($serverId);
+        $personalPricesForUser = function ($query) use ($user, $serverId) {
+            $query->where('user_id', $user->id);
+            if ($serverId) {
+                $query->where('server_id', $serverId);
+            }
+        };
+        $preferencesForUser = function ($query) use ($user, $serverId) {
+            $query->where('user_id', $user->id);
+            if ($serverId) {
+                $query->where('server_id', $serverId);
+            }
+        };
 
-        $favorites = auth()->user()->favoriteItems()
+        $favorites = $user->favoriteItems()
             ->with([
                 'recipe.ingredients.recipe.ingredients.prices' => function ($q) use ($serverId) {
                     if ($serverId) {
@@ -38,6 +51,12 @@ class FavoriteController extends Controller
                             ->orderBy('updated_at', 'desc');
                     }
                 },
+                'personalPrices' => $personalPricesForUser,
+                'pricePreferences' => $preferencesForUser,
+                'recipe.ingredients.personalPrices' => $personalPricesForUser,
+                'recipe.ingredients.pricePreferences' => $preferencesForUser,
+                'recipe.ingredients.recipe.ingredients.personalPrices' => $personalPricesForUser,
+                'recipe.ingredients.recipe.ingredients.pricePreferences' => $preferencesForUser,
             ])
             ->orderByPivot('created_at', 'desc')
             ->get();
@@ -46,7 +65,7 @@ class FavoriteController extends Controller
         $favoriteAnalysis = [];
         if ($server) {
             foreach ($favorites as $favorite) {
-                $analysis = $this->analyzeItem($favorite, $server, $request->user());
+                $analysis = $this->analyzeItem($favorite, $server, $user);
                 $favoriteAnalysis[] = $analysis;
             }
         } else {

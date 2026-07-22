@@ -26,8 +26,12 @@ class CommunityPriceTrustService
             ->where('server_id', $serverId)
             ->first();
         $currentReasonCodes = $currentItemPrice?->confidence_details['reason_codes'] ?? [];
-        $isModerationLocked = $currentItemPrice?->status === ItemPrice::STATUS_REJECTED
-            && ! in_array('no_valid_observation', $currentReasonCodes, true);
+        $moderationLockedStatus = match (true) {
+            $currentItemPrice?->status === ItemPrice::STATUS_PENDING_REVIEW => ItemPrice::STATUS_PENDING_REVIEW,
+            $currentItemPrice?->status === ItemPrice::STATUS_REJECTED
+                && ! in_array('no_valid_observation', $currentReasonCodes, true) => ItemPrice::STATUS_REJECTED,
+            default => null,
+        };
 
         $observations = $this->loadLatestContributorObservations($itemId, $serverId);
 
@@ -79,7 +83,7 @@ class CommunityPriceTrustService
             [
                 'price' => $analysis['price'],
                 'created_by' => $latestObservation->created_by,
-                'status' => $isModerationLocked ? ItemPrice::STATUS_REJECTED : ItemPrice::STATUS_APPROVED,
+                'status' => $moderationLockedStatus ?? ItemPrice::STATUS_APPROVED,
                 'confidence_score' => $analysis['confidence_score'],
                 'confidence_level' => $analysis['confidence_level'],
                 'recent_observations_count' => $recentObservationCount,

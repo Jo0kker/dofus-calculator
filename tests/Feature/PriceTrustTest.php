@@ -1,6 +1,7 @@
 <?php
 
 use App\Models\Item;
+use App\Models\ItemPrice;
 use App\Models\PriceHistory;
 use App\Models\PriceReport;
 use App\Models\Server;
@@ -257,6 +258,33 @@ it('keeps a rejected multi-contributor consensus locked during recalculation', f
     expect($price->fresh()->status)->toBe('rejected');
 });
 
+it('does not attribute a report from an unrecalculated consensus to one contributor', function () {
+    $users = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
+
+    foreach ($users as $user) {
+        PriceHistory::create([
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => 1400,
+            'created_by' => $user->id,
+        ]);
+    }
+
+    $price = ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1400,
+        'created_by' => $users[0]->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $this->actingAs(User::factory()->create())
+        ->post(route('prices.report', $price), ['comment' => 'Consensus à vérifier'])
+        ->assertSessionHasNoErrors();
+
+    expect(PriceReport::firstOrFail()->price_history_id)->toBeNull();
+});
+
 it('puts a price under review from three independent pending reports', function () {
     $contributor = User::factory()->create(['created_at' => now()->subYear()]);
     $reporters = User::factory()->count(3)->create();
@@ -272,6 +300,33 @@ it('puts a price under review from three independent pending reports', function 
             ->post(route('prices.report', $price), ['comment' => 'Prix à vérifier'])
             ->assertSessionHasNoErrors();
     }
+
+    expect($price->fresh()->reports_count)->toBe(3)
+        ->and($price->fresh()->status)->toBe('pending_review');
+});
+
+it('keeps a price under review when a new observation is submitted', function () {
+    $contributor = User::factory()->create(['created_at' => now()->subYear()]);
+    $reporters = User::factory()->count(3)->create();
+    $price = $this->submissionService->submitCommunityPrice(
+        $contributor,
+        $this->item->id,
+        $this->server->id,
+        1700,
+    );
+
+    foreach ($reporters as $reporter) {
+        $this->actingAs($reporter)
+            ->post(route('prices.report', $price), ['comment' => 'Prix à vérifier'])
+            ->assertSessionHasNoErrors();
+    }
+
+    $this->submissionService->submitCommunityPrice(
+        User::factory()->create(['created_at' => now()->subYear()]),
+        $this->item->id,
+        $this->server->id,
+        1750,
+    );
 
     expect($price->fresh()->reports_count)->toBe(3)
         ->and($price->fresh()->status)->toBe('pending_review');

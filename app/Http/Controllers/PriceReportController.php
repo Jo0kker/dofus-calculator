@@ -33,8 +33,16 @@ class PriceReportController extends Controller
         // Un report sur un consensus multi-contributeurs ne doit pas pénaliser
         // arbitrairement un seul utilisateur. On ne rattache donc un relevé
         // individuel que lorsqu'il est l'unique source du prix affiché.
+        $recentContributorCount = PriceHistory::query()
+            ->where('item_id', $itemPrice->item_id)
+            ->where('server_id', $itemPrice->server_id)
+            ->whereNull('rejected_at')
+            ->where('created_at', '>=', now()->subDays(CommunityPriceTrustService::WINDOW_DAYS))
+            ->distinct()
+            ->count('created_by');
+
         $currentPriceHistory = null;
-        if ($itemPrice->recent_contributors_count <= 1) {
+        if ($recentContributorCount <= 1) {
             $currentPriceHistory = PriceHistory::where('item_id', $itemPrice->item_id)
                 ->where('server_id', $itemPrice->server_id)
                 ->where('price', $itemPrice->price)

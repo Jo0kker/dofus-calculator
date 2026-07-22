@@ -56,6 +56,7 @@
 
                     <PriceModeSelector
                         :model-value="itemPriceOverride"
+                        :disabled="preferenceSaving"
                         @select="setItemPriceMode"
                     />
                 </div>
@@ -126,6 +127,7 @@ const emit = defineEmits(['price-updated']);
 const { selectedServerId, isServerSelected } = useServerSelection();
 const showReportModal = ref(false);
 const itemPriceOverride = ref('');
+const preferenceSaving = ref(false);
 const normalizeItemPreference = mode => mode === 'personal' ? 'personal' : '';
 
 const quickPriceForm = useForm({
@@ -182,7 +184,13 @@ watch(storedItemPreference, preference => {
     itemPriceOverride.value = normalizeItemPreference(preference?.mode);
 });
 
-const saveItemPriceMode = () => {
+const saveItemPriceMode = previousPreference => {
+    preferenceSaving.value = true;
+
+    const restorePreviousPreference = () => {
+        itemPriceOverride.value = previousPreference;
+    };
+
     router.put(route('prices.item-preference'), {
         item_id: props.ingredient.id,
         server_id: selectedServerId.value,
@@ -190,15 +198,21 @@ const saveItemPriceMode = () => {
     }, {
         preserveScroll: true,
         preserveState: true,
+        onError: restorePreviousPreference,
+        onException: restorePreviousPreference,
+        onFinish: () => {
+            preferenceSaving.value = false;
+        },
     });
 };
 
 const setItemPriceMode = mode => {
     const preference = normalizeItemPreference(mode);
-    if (itemPriceOverride.value === preference) return;
+    if (itemPriceOverride.value === preference || preferenceSaving.value) return;
 
+    const previousPreference = itemPriceOverride.value;
     itemPriceOverride.value = preference;
-    saveItemPriceMode();
+    saveItemPriceMode(previousPreference);
 };
 
 const submitPrice = () => {

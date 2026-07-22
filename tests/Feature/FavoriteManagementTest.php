@@ -1,7 +1,11 @@
 <?php
 
 use App\Models\Item;
+use App\Models\ItemPrice;
+use App\Models\PersonalItemPrice;
+use App\Models\Server;
 use App\Models\User;
+use App\Models\UserItemPricePreference;
 use Inertia\Testing\AssertableInertia as Assert;
 
 beforeEach(function () {
@@ -41,6 +45,47 @@ it('shows favorites without requiring a selected server', function () {
             ->where('favorites.0.item.id', $recentItem->id)
             ->where('favorites.0.best_option', 'unavailable')
             ->where('favorites.1.item.id', $olderItem->id));
+});
+
+it('uses the account server and personal price when the session has no server', function () {
+    $server = Server::create([
+        'name' => 'Serveur favori',
+        'slug' => 'serveur-favori',
+    ]);
+    $contributor = User::factory()->create();
+    $this->user->update(['server_id' => $server->id]);
+    $item = Item::create([
+        'dofusdb_id' => 120005,
+        'name' => 'Favori personnel',
+    ]);
+    $this->user->favoriteItems()->attach($item->id);
+
+    ItemPrice::create([
+        'server_id' => $server->id,
+        'item_id' => $item->id,
+        'price' => 1000,
+        'created_by' => $contributor->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+    PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $server->id,
+        'item_id' => $item->id,
+        'price' => 750,
+    ]);
+    UserItemPricePreference::create([
+        'user_id' => $this->user->id,
+        'server_id' => $server->id,
+        'item_id' => $item->id,
+        'mode' => 'personal',
+    ]);
+
+    $this->actingAs($this->user)
+        ->get(route('favorites.index'))
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('favorites.0.direct_price', 750)
+            ->where('favorites.0.best_option', 'buy'));
 });
 
 it('removes a favorite explicitly and idempotently', function () {
