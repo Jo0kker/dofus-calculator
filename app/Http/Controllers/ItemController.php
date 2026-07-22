@@ -156,18 +156,13 @@ class ItemController extends Controller
             return response()->json(['error' => 'Server not found'], 404);
         }
 
+        $item->loadMissing('recipe');
+
         if (! $item->recipe) {
             return response()->json(['error' => 'Item has no recipe'], 404);
         }
 
-        // Charger les relations nécessaires
-        $item->load([
-            'recipe.ingredients.recipe',
-            'recipe.ingredients.prices' => function ($query) use ($serverId) {
-                $query->where('server_id', $serverId)
-                    ->where('status', 'approved');
-            },
-        ]);
+        $this->loadRecursivePricingTree($item, $serverId, $request->user());
 
         // Calculer le coût récursif
         $calculated = [];
@@ -252,7 +247,7 @@ class ItemController extends Controller
                     if ($craftCost < $directPrice->price) {
                         $ingredientData['usedMethod'] = 'craft';
                         $ingredientData['usedPrice'] = $craftCost;
-                        $ingredientData['usedPriceSource'] = ['type' => 'craft', 'label' => 'Craft'];
+                        $ingredientData['usedPriceSource'] = null;
                         $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated, $user);
                     } else {
                         $ingredientData['usedMethod'] = 'buy';
@@ -265,7 +260,7 @@ class ItemController extends Controller
                     // Pas de prix direct, forcer le craft
                     $ingredientData['usedMethod'] = 'craft';
                     $ingredientData['usedPrice'] = $craftCost;
-                    $ingredientData['usedPriceSource'] = ['type' => 'craft', 'label' => 'Craft'];
+                    $ingredientData['usedPriceSource'] = null;
                     $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated, $user);
 
                     return $craftCost;
@@ -284,6 +279,61 @@ class ItemController extends Controller
         }
 
         return null;
+    }
+
+    private function loadRecursivePricingTree(Item $item, int $serverId, ?User $user): void
+    {
+        $pending = $item->newCollection([$item]);
+        $visited = [];
+
+        while ($pending->isNotEmpty()) {
+            $current = $pending
+                ->reject(fn (Item $candidate) => isset($visited[$candidate->id]))
+                ->values();
+
+            if ($current->isEmpty()) {
+                break;
+            }
+
+            foreach ($current as $candidate) {
+                $visited[$candidate->id] = true;
+            }
+
+            $relations = [
+                'prices' => fn ($query) => $query
+                    ->where('server_id', $serverId)
+                    ->where('status', ItemPrice::STATUS_APPROVED)
+                    ->orderByDesc('updated_at')
+                    ->with(['user' => fn ($query) => $query->select([
+                        'id',
+                        'name',
+                        'price_contributions_count',
+                    ])]),
+            ];
+
+            if ($user) {
+                $relations['personalPrices'] = fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('server_id', $serverId);
+                $relations['pricePreferences'] = fn ($query) => $query
+                    ->where('user_id', $user->id)
+                    ->where('server_id', $serverId);
+            }
+
+            $current->load($relations);
+            $current->loadMissing('recipe.ingredients');
+
+            $nextById = [];
+            foreach ($current as $candidate) {
+                foreach ($candidate->recipe?->ingredients ?? [] as $ingredient) {
+                    if (! isset($visited[$ingredient->id])) {
+                        $nextById[$ingredient->id] = $ingredient;
+                    }
+                }
+            }
+
+            $pending = $item->newCollection(array_values($nextById));
+        }
     }
 
     private function priceSourcePayload(Item $item, ItemPrice|PersonalItemPrice|null $price, Server $server, ?User $user): ?array

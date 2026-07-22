@@ -229,6 +229,38 @@ it('uses a validated moderation report as a reliability signal', function () {
         ->and($price->fresh()->status)->toBe('rejected');
 });
 
+it('publishes the previous valid observation after the reported one is rejected', function () {
+    $contributor = User::factory()->create(['created_at' => now()->subYear()]);
+    $reporter = User::factory()->create();
+    $moderator = User::factory()->create(['role' => 'admin']);
+
+    $this->submissionService->submitCommunityPrice(
+        $contributor,
+        $this->item->id,
+        $this->server->id,
+        1000,
+    );
+    $price = $this->submissionService->submitCommunityPrice(
+        $contributor,
+        $this->item->id,
+        $this->server->id,
+        5000,
+    );
+
+    $this->actingAs($reporter)
+        ->post(route('prices.report', $price), ['comment' => 'Dernier relevé incorrect'])
+        ->assertSessionHasNoErrors();
+
+    $report = PriceReport::firstOrFail();
+    $this->actingAs($moderator)
+        ->post(route('moderation.reports.approve', $report), ['action' => 'reject_price'])
+        ->assertSessionHasNoErrors();
+
+    expect($report->priceHistory->fresh()->rejected_at)->not->toBeNull()
+        ->and($price->fresh()->price)->toBe(1000)
+        ->and($price->fresh()->status)->toBe(ItemPrice::STATUS_APPROVED);
+});
+
 it('keeps a rejected multi-contributor consensus locked during recalculation', function () {
     $users = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
     $moderator = User::factory()->create(['role' => 'admin']);

@@ -182,6 +182,56 @@ it('exposes the price source and contributor used by recursive recipe calculatio
         ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.contributor', null);
 });
 
+it('does not expose a price source when craft is the selected method', function () {
+    $craftedIngredient = Item::create([
+        'dofusdb_id' => 987656,
+        'name' => 'Ingrédient craftable',
+    ]);
+    $baseResource = Item::create([
+        'dofusdb_id' => 987657,
+        'name' => 'Ressource de base',
+    ]);
+    $resultItem = Item::create([
+        'dofusdb_id' => 987658,
+        'name' => 'Objet final',
+    ]);
+
+    $ingredientRecipe = Recipe::create([
+        'item_id' => $craftedIngredient->id,
+        'quantity_produced' => 1,
+    ]);
+    $ingredientRecipe->ingredients()->attach($baseResource->id, ['quantity' => 1]);
+    $resultRecipe = Recipe::create([
+        'item_id' => $resultItem->id,
+        'quantity_produced' => 1,
+    ]);
+    $resultRecipe->ingredients()->attach($craftedIngredient->id, ['quantity' => 1]);
+
+    ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $baseResource->id,
+        'price' => 100,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+    ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $craftedIngredient->id,
+        'price' => 500,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('items.calculate-recursive', [
+            'item' => $resultItem,
+            'server_id' => $this->server->id,
+        ]))
+        ->assertOk()
+        ->assertJsonPath('craftTree.ingredients.0.usedMethod', 'craft')
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource', null);
+});
+
 it('exposes the current contributor and their historical contribution count without their email', function () {
     $this->actingAs($this->user);
 
