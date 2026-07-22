@@ -36,7 +36,6 @@ class User extends Authenticatable
         'server_id',
         'role',
         'interface_mode',
-        'price_mode',
         'price_reliability_score',
         'price_reliability_samples',
         'price_reliability_updated_at',

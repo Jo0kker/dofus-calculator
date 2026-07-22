@@ -9,7 +9,6 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('price_mode', 20)->default('community')->after('interface_mode');
             $table->unsignedBigInteger('price_contributions_count')->default(0)->after('rejected_prices_count');
         });
 
@@ -44,7 +43,7 @@ return new class extends Migration
         Schema::dropIfExists('personal_item_prices');
 
         Schema::table('users', function (Blueprint $table) {
-            $table->dropColumn(['price_mode', 'price_contributions_count']);
+            $table->dropColumn('price_contributions_count');
         });
     }
 };

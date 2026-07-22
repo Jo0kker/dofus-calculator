@@ -6,6 +6,7 @@
                 <img v-if="node.image_url" :src="node.image_url" :alt="node.name" class="w-4 h-4" />
                 <span>{{ node.quantity }}x {{ node.name }}</span>
                 <span class="bg-green-100 text-green-800 px-2 py-0.5 text-xs rounded">💰 ACHAT</span>
+                <PriceSourceTag :source="node.usedPriceSource" />
             </div>
             <span class="font-bold text-green-600">{{ formatNumber(node.usedPrice * node.quantity) }}K</span>
         </div>
@@ -55,6 +56,8 @@
 </template>
 
 <script setup>
+import PriceSourceTag from './PriceSourceTag.vue';
+
 const props = defineProps({
     node: Object,
     depth: {

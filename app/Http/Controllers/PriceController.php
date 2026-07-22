@@ -47,17 +47,6 @@ class PriceController extends Controller
         return back()->with('success', $message);
     }
 
-    public function updatePreference(Request $request)
-    {
-        $validated = $request->validate([
-            'price_mode' => ['required', Rule::in(['community', 'personal'])],
-        ]);
-
-        $this->priceSubmissionService->rememberMode($request->user(), $validated['price_mode']);
-
-        return back();
-    }
-
     public function updateItemPreference(Request $request)
     {
         $validated = $request->validate([
@@ -102,7 +91,7 @@ class PriceController extends Controller
         ]);
 
         DB::transaction(function () use ($request, $validated) {
-            $mode = $validated['price_mode'] ?? $request->user()->price_mode ?? 'community';
+            $mode = $validated['price_mode'] ?? 'community';
             $prices = collect($validated['prices'])->keyBy('item_id')->values();
 
             foreach ($prices as $priceData) {

@@ -361,7 +361,7 @@ const toggleFavorite = () => {
 
 const getDirectPrice = () => {
     const itemPreference = props.item.price_preferences?.find(preference => preference.server_id == page.props.selected_server_id);
-    const effectiveMode = itemPreference?.mode || page.props.auth?.user?.price_mode || 'community';
+    const effectiveMode = itemPreference?.mode === 'personal' ? 'personal' : 'community';
 
     if (effectiveMode === 'personal' && props.item.personal_prices?.length) {
         return props.item.personal_prices[0].price;

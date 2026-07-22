@@ -122,6 +122,13 @@ it('returns a desktop item inspector payload', function () {
         'created_by' => $user->id,
         'status' => ItemPrice::STATUS_APPROVED,
     ]);
+    ItemPrice::create([
+        'server_id' => $server->id,
+        'item_id' => $ingredient->id,
+        'price' => 125,
+        'created_by' => $user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
     PersonalItemPrice::create([
         'user_id' => $user->id,
         'server_id' => $server->id,
@@ -144,14 +151,19 @@ it('returns a desktop item inspector payload', function () {
         ->assertJsonPath('item.recipe.ingredients.0.name', 'Poil de Prespic')
         ->assertJsonPath('item.recipe.ingredients.0.quantity', 10)
         ->assertJsonPath('item.recipe.ingredients.0.pivot.quantity', 10)
+        ->assertJsonPath('item.recipe.ingredients.0.prices.0.user.name', $user->name)
+        ->assertJsonPath('item.recipe.ingredients.0.prices.0.user.price_contributions_count', 12)
         ->assertJsonPath('item.prices.0.user.name', $user->name)
         ->assertJsonPath('item.prices.0.user.price_contributions_count', 12)
         ->assertJsonMissingPath('item.prices.0.user.price_reliability_score')
         ->assertJsonMissingPath('item.prices.0.user.price_reliability_samples')
         ->assertJsonMissingPath('item.prices.0.confidence_score')
-        ->assertJsonMissingPath('item.prices.0.confidence_details.average_reliability_score')
-        ->assertJsonMissingPath('item.prices.0.confidence_details.latest_plausibility_score')
-        ->assertJsonPath('item.prices.0.confidence_level', 'low')
+        ->assertJsonMissingPath('item.prices.0.confidence_level')
+        ->assertJsonMissingPath('item.prices.0.recent_observations_count')
+        ->assertJsonMissingPath('item.prices.0.recent_contributors_count')
+        ->assertJsonMissingPath('item.prices.0.confidence_details')
+        ->assertJsonMissingPath('item.prices.0.confidence_computed_at')
+        ->assertJsonMissingPath('item.prices.0.confidence_version')
         ->assertJsonPath('item.personal_prices.0.price', 950)
         ->assertJsonPath('item.price_preferences.0.mode', 'personal')
         ->assertJsonStructure([

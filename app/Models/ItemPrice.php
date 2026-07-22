@@ -10,6 +10,12 @@ class ItemPrice extends Model
 {
     protected $hidden = [
         'confidence_score',
+        'confidence_level',
+        'recent_observations_count',
+        'recent_contributors_count',
+        'confidence_details',
+        'confidence_computed_at',
+        'confidence_version',
     ];
 
     protected $fillable = [

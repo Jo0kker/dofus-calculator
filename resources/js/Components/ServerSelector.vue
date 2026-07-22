@@ -33,14 +33,11 @@
                 </option>
             </select>
         </div>
-
-        <PriceModeSelector :compact="compact" />
     </div>
 </template>
 
 <script setup>
 import { useServerSelection } from '@/Composables/useServerSelection';
-import PriceModeSelector from '@/Components/PriceModeSelector.vue';
 
 defineProps({
     compact: {

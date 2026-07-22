@@ -79,7 +79,7 @@ const updateResize = (x, y, w, h) => {
             class="flex h-full flex-col overflow-hidden border border-[#083f88] bg-[#d4d0c8] text-slate-950 shadow-[8px_8px_0_rgba(0,0,0,0.28)]"
             @mousedown="emit('focus', windowState.id)"
         >
-            <header class="desktop-window__drag-handle flex h-8 cursor-move select-none items-center justify-between bg-gradient-to-r from-[#083f88] via-[#0f63bd] to-[#5aa0e6] px-1.5 text-white">
+            <header class="desktop-window__drag-handle relative z-10 flex h-8 shrink-0 cursor-move select-none items-center justify-between overflow-hidden bg-gradient-to-r from-[#083f88] via-[#0f63bd] to-[#5aa0e6] px-1.5 text-white">
                 <div class="flex min-w-0 items-center gap-2 px-1">
                     <span class="grid h-4 w-4 place-items-center rounded-sm bg-[#f5c542] text-[10px] text-[#3b2a00]">◆</span>
                     <h3 class="truncate text-xs font-bold tracking-wide drop-shadow">
@@ -118,7 +118,7 @@ const updateResize = (x, y, w, h) => {
 
             <div
                 v-if="windowState.component && desktopAppComponents[windowState.component]"
-                class="desktop-window__scaled-viewport min-h-0 flex-1"
+                class="desktop-window__scaled-viewport relative min-h-0 flex-1"
                 :style="{ '--desktop-window-scale': desktopScale }"
             >
                 <component
@@ -158,7 +158,6 @@ const updateResize = (x, y, w, h) => {
 }
 
 .desktop-window__scaled-content {
-    display: block;
     min-width: 0;
     transform: scale(var(--desktop-window-scale));
     transform-origin: top left;

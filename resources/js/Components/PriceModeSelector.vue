@@ -1,87 +1,87 @@
 <script setup>
-import { ref, watch } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { CircleHelp, Store, UserRound } from '@lucide/vue';
 
 defineProps({
+    modelValue: {
+        type: String,
+        default: '',
+    },
+    disabled: {
+        type: Boolean,
+        default: false,
+    },
     compact: {
         type: Boolean,
         default: false,
     },
 });
 
-const page = usePage();
-const selectedMode = ref(page.props.auth?.user?.price_mode || 'community');
-const saving = ref(false);
-
-watch(() => page.props.auth?.user?.price_mode, mode => {
-    if (mode) selectedMode.value = mode;
-});
-
-const selectMode = mode => {
-    if (saving.value || selectedMode.value === mode) return;
-
-    const previousMode = selectedMode.value;
-    selectedMode.value = mode;
-    saving.value = true;
-
-    router.put(route('prices.preference'), { price_mode: mode }, {
-        preserveScroll: true,
-        preserveState: true,
-        onError: () => {
-            selectedMode.value = previousMode;
-        },
-        onFinish: () => {
-            saving.value = false;
-        },
-    });
-};
+defineEmits(['select']);
 </script>
 
 <template>
-    <div
-        v-if="$page.props.auth?.user"
-        :class="compact
-            ? 'w-full border border-[#9c9c9c] bg-[#ece9d8] p-2 text-slate-800 shadow-inner'
-            : 'flex items-center gap-2'"
-    >
-        <span :class="compact ? 'mb-1 block text-[11px] font-bold' : 'text-sm font-medium text-gray-700 dark:text-gray-200'">
-            Source des prix
-        </span>
-        <div
-            class="grid grid-cols-2 p-0.5 text-xs font-semibold"
-            :class="compact ? 'w-full border border-[#808080] bg-[#c8c8c8]' : 'rounded-lg bg-gray-200'"
-        >
+    <fieldset class="relative min-w-0">
+        <legend class="sr-only">Source de prix</legend>
+
+        <div class="mb-1 flex items-center gap-1">
+            <span class="text-[9px] font-semibold uppercase tracking-wide text-gray-400">Source</span>
+
+            <div class="group relative">
+                <button
+                    type="button"
+                    class="inline-flex size-4 items-center justify-center rounded-full text-gray-400 transition hover:bg-gray-100 hover:text-gray-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
+                    aria-label="Afficher l’aide sur les sources de prix"
+                >
+                    <CircleHelp :size="11" :stroke-width="2.2" aria-hidden="true" />
+                </button>
+
+                <div
+                    role="tooltip"
+                    class="pointer-events-none invisible absolute bottom-full right-0 z-50 mb-1.5 w-52 translate-y-1 space-y-1 rounded-md border border-slate-700 bg-slate-900 p-2 text-[9px] leading-tight normal-case tracking-normal text-slate-100 opacity-0 shadow-lg transition duration-150 group-hover:visible group-hover:translate-y-0 group-hover:opacity-100 group-focus-within:visible group-focus-within:translate-y-0 group-focus-within:opacity-100"
+                >
+                    <div class="flex items-center gap-1.5">
+                        <Store class="shrink-0 text-blue-300" :size="11" aria-hidden="true" />
+                        <span><strong class="text-white">HDV</strong> · prix communautaire par défaut</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        <UserRound class="shrink-0 text-violet-300" :size="11" aria-hidden="true" />
+                        <span><strong class="text-white">Perso</strong> · prix privé, repli HDV</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="inline-flex rounded-lg border border-gray-200 bg-gray-100 p-0.5 shadow-inner">
             <button
                 type="button"
-                class="px-2 py-1 transition-colors"
+                class="inline-flex items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-400"
                 :class="[
-                    compact ? 'border border-transparent' : 'rounded-md',
-                    selectedMode === 'community'
-                        ? (compact ? 'border-[#174d8c] bg-white text-[#0b3f88] shadow-inner' : 'bg-white text-blue-700 shadow-sm')
-                        : 'text-gray-600 hover:text-gray-900',
+                    compact ? 'size-7' : 'size-8',
+                    modelValue !== 'personal' ? 'bg-blue-600 text-white shadow-sm' : 'text-gray-400 hover:bg-white/70 hover:text-blue-600',
                 ]"
-                :disabled="saving"
-                @click="selectMode('community')"
+                aria-label="Toujours utiliser le prix HDV"
+                :aria-pressed="modelValue !== 'personal'"
+                :disabled="disabled"
+                @click="$emit('select', 'community')"
             >
-                HDV
+                <Store :size="compact ? 13 : 15" :stroke-width="2.2" aria-hidden="true" />
             </button>
+
             <button
                 type="button"
-                class="px-2 py-1 transition-colors"
+                class="inline-flex items-center justify-center rounded-md transition focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-400"
                 :class="[
-                    compact ? 'border border-transparent' : 'rounded-md',
-                    selectedMode === 'personal'
-                        ? (compact ? 'border-[#5b3b87] bg-white text-violet-800 shadow-inner' : 'bg-white text-violet-700 shadow-sm')
-                        : 'text-gray-600 hover:text-gray-900',
+                    compact ? 'size-7' : 'size-8',
+                    modelValue === 'personal' ? 'bg-violet-600 text-white shadow-sm' : 'text-gray-400 hover:bg-white/70 hover:text-violet-600',
                 ]"
-                :disabled="saving"
-                @click="selectMode('personal')"
+                aria-label="Toujours utiliser le prix personnel"
+                :aria-pressed="modelValue === 'personal'"
+                :disabled="disabled"
+                @click="$emit('select', 'personal')"
             >
-                Perso
+                <UserRound :size="compact ? 13 : 15" :stroke-width="2.2" aria-hidden="true" />
             </button>
         </div>
-        <span v-if="compact" class="mt-1 block text-[10px] leading-tight text-slate-600">
-            Choix global, sauf exception définie sur un objet.
-        </span>
-    </div>
+
+    </fieldset>
 </template>

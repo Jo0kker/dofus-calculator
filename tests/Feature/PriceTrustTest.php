@@ -52,11 +52,13 @@ it('keeps internal trust metrics out of the public price api', function () {
 
     $this->getJson("/api/items/{$this->item->id}?include=prices&server_id={$this->server->id}")
         ->assertOk()
-        ->assertJsonPath('data.prices.0.confidence_level', 'low')
         ->assertJsonMissingPath('data.prices.0.confidence_score')
-        ->assertJsonMissingPath('data.prices.0.confidence_details.average_reliability_score')
-        ->assertJsonMissingPath('data.prices.0.confidence_details.latest_plausibility_score')
-        ->assertJsonMissingPath('data.prices.0.confidence_details.effective_contributors');
+        ->assertJsonMissingPath('data.prices.0.confidence_level')
+        ->assertJsonMissingPath('data.prices.0.recent_observations_count')
+        ->assertJsonMissingPath('data.prices.0.recent_contributors_count')
+        ->assertJsonMissingPath('data.prices.0.confidence_details')
+        ->assertJsonMissingPath('data.prices.0.confidence_computed_at')
+        ->assertJsonMissingPath('data.prices.0.confidence_version');
 });
 
 it('counts repeated observations but gives one contributor only one influence', function () {

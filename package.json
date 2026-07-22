@@ -23,6 +23,7 @@
         "vue": "^3.3.13"
     },
     "dependencies": {
+        "@lucide/vue": "^1.24.0",
         "vue-draggable-resizable": "3.0.0"
     }
 }

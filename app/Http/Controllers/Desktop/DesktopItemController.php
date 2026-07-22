@@ -149,11 +149,6 @@ class DesktopItemController extends Controller
                 'name' => $price->server->name,
             ] : null,
             'updated_at' => $price->updated_at?->toISOString(),
-            'confidence_level' => $price->confidence_level,
-            'recent_observations_count' => $price->recent_observations_count,
-            'recent_contributors_count' => $price->recent_contributors_count,
-            'confidence_details' => $price->confidence_details,
-            'confidence_computed_at' => $price->confidence_computed_at?->toISOString(),
             'user' => $price->user ? [
                 'name' => $price->user->name,
                 'price_contributions_count' => $price->user->price_contributions_count,

@@ -356,11 +356,6 @@ class ItemApiController extends Controller
                     'price' => $price->price,
                     'status' => $price->status,
                     'reports_count' => $price->reports_count,
-                    'confidence_level' => $price->confidence_level,
-                    'recent_observations_count' => $price->recent_observations_count,
-                    'recent_contributors_count' => $price->recent_contributors_count,
-                    'confidence_details' => $price->confidence_details,
-                    'confidence_computed_at' => $price->confidence_computed_at,
                     'created_at' => $price->created_at,
                     'updated_at' => $price->updated_at,
                 ];

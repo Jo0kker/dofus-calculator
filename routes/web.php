@@ -46,7 +46,6 @@ Route::middleware([
     // Price management routes
     Route::post('/prices', [PriceController::class, 'store'])->name('prices.store');
     Route::post('/prices/bulk', [PriceController::class, 'bulkUpdate'])->name('prices.bulk');
-    Route::put('/prices/preference', [PriceController::class, 'updatePreference'])->name('prices.preference');
     Route::put('/prices/item-preference', [PriceController::class, 'updateItemPreference'])->name('prices.item-preference');
 
     // Price reporting routes

@@ -7,6 +7,7 @@ use App\Models\PersonalItemPrice;
 use App\Models\PriceHistory;
 use App\Models\User;
 use App\Models\UserItemPricePreference;
+use Illuminate\Support\Facades\DB;
 
 class PriceSubmissionService
 {
@@ -22,7 +23,18 @@ class PriceSubmissionService
             'reliability_snapshot' => $user->price_reliability_score ?? 60,
         ]);
 
-        $user->increment('price_contributions_count');
+        $counted = DB::table('price_contribution_days')->insertOrIgnore([
+            'user_id' => $user->id,
+            'server_id' => $serverId,
+            'item_id' => $itemId,
+            'contribution_date' => now()->toDateString(),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        if ($counted === 1) {
+            $user->increment('price_contributions_count');
+        }
 
         return $this->trustService->recalculate($itemId, $serverId);
     }
@@ -39,16 +51,9 @@ class PriceSubmissionService
         );
     }
 
-    public function rememberMode(User $user, string $mode): void
-    {
-        if ($user->price_mode !== $mode) {
-            $user->forceFill(['price_mode' => $mode])->save();
-        }
-    }
-
     public function rememberItemMode(User $user, int $itemId, int $serverId, ?string $mode): void
     {
-        if ($mode === null) {
+        if ($mode !== 'personal') {
             UserItemPricePreference::query()
                 ->where('user_id', $user->id)
                 ->where('item_id', $itemId)

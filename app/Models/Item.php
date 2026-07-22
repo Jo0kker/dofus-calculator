@@ -72,7 +72,7 @@ class Item extends Model
                 ->where('server_id', $server->id)
                 ->first();
 
-        return $preference?->mode ?? $user->price_mode ?? 'community';
+        return $preference?->mode === 'personal' ? 'personal' : 'community';
     }
 
     public function getPriceForServer(Server $server, ?User $user = null): ItemPrice|PersonalItemPrice|null

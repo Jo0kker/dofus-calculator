@@ -3,7 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Item;
+use App\Models\ItemPrice;
+use App\Models\PersonalItemPrice;
 use App\Models\Server;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -179,6 +182,7 @@ class ItemController extends Controller
         return response()->json([
             'craftCost' => $craftCost,
             'directPrice' => $directPrice ? $directPrice->price : null,
+            'directPriceSource' => $this->priceSourcePayload($item, $directPrice, $server, $request->user()),
             'craftTree' => $craftTree,
             'bestOption' => $this->determineBestOption($craftCost, $directPrice),
         ]);
@@ -196,6 +200,7 @@ class ItemController extends Controller
         foreach ($item->recipe->ingredients as $ingredient) {
             $quantity = $ingredient->pivot->quantity;
             $directPrice = $ingredient->getPriceForServer($server, $user);
+            $directPriceSource = $this->priceSourcePayload($ingredient, $directPrice, $server, $user);
 
             $ingredientData = [
                 'id' => $ingredient->id,
@@ -203,9 +208,11 @@ class ItemController extends Controller
                 'quantity' => $quantity,
                 'image_url' => $ingredient->image_url,
                 'directPrice' => $directPrice ? $directPrice->price : null,
+                'directPriceSource' => $directPriceSource,
                 'hasCraft' => false,
                 'craftCost' => null,
                 'usedPrice' => null,
+                'usedPriceSource' => null,
                 'usedMethod' => 'buy',
                 'craftTree' => null,
             ];
@@ -245,10 +252,12 @@ class ItemController extends Controller
                     if ($craftCost < $directPrice->price) {
                         $ingredientData['usedMethod'] = 'craft';
                         $ingredientData['usedPrice'] = $craftCost;
+                        $ingredientData['usedPriceSource'] = ['type' => 'craft', 'label' => 'Craft'];
                         $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated, $user);
                     } else {
                         $ingredientData['usedMethod'] = 'buy';
                         $ingredientData['usedPrice'] = $directPrice->price;
+                        $ingredientData['usedPriceSource'] = $ingredientData['directPriceSource'];
                     }
 
                     return $optimalCost;
@@ -256,6 +265,7 @@ class ItemController extends Controller
                     // Pas de prix direct, forcer le craft
                     $ingredientData['usedMethod'] = 'craft';
                     $ingredientData['usedPrice'] = $craftCost;
+                    $ingredientData['usedPriceSource'] = ['type' => 'craft', 'label' => 'Craft'];
                     $ingredientData['craftTree'] = $this->buildCraftTree($ingredient, $server, $calculated, $user);
 
                     return $craftCost;
@@ -268,11 +278,40 @@ class ItemController extends Controller
         if ($price) {
             $ingredientData['usedMethod'] = 'buy';
             $ingredientData['usedPrice'] = $price->price;
+            $ingredientData['usedPriceSource'] = $this->priceSourcePayload($ingredient, $price, $server, $user);
 
             return $price->price;
         }
 
         return null;
+    }
+
+    private function priceSourcePayload(Item $item, ItemPrice|PersonalItemPrice|null $price, Server $server, ?User $user): ?array
+    {
+        if (! $price) {
+            return null;
+        }
+
+        if ($price instanceof PersonalItemPrice) {
+            return [
+                'type' => 'personal',
+                'label' => 'Perso',
+                'isFallback' => false,
+                'contributor' => null,
+            ];
+        }
+
+        $price->loadMissing('user:id,name,price_contributions_count');
+
+        return [
+            'type' => 'community',
+            'label' => 'HDV',
+            'isFallback' => $user && $item->getPriceModeForServer($server, $user) === 'personal',
+            'contributor' => $price->user ? [
+                'name' => $price->user->name,
+                'price_contributions_count' => $price->user->price_contributions_count,
+            ] : null,
+        ];
     }
 
     private function determineBestOption($craftCost, $directPrice)

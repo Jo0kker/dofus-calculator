@@ -175,7 +175,7 @@ const getEffectivePrice = ingredient => {
     const communityPrice = ingredient.prices?.[0] || null;
     const personalPrice = ingredient.personal_prices?.[0] || null;
     const preference = ingredient.price_preferences?.find(entry => entry.server_id == page.props.selected_server_id);
-    const effectiveMode = preference?.mode || page.props.auth?.user?.price_mode || 'community';
+    const effectiveMode = preference?.mode === 'personal' ? 'personal' : 'community';
 
     if (effectiveMode === 'personal') {
         return personalPrice?.price ?? communityPrice?.price ?? null;
@@ -183,10 +183,6 @@ const getEffectivePrice = ingredient => {
 
     return communityPrice?.price ?? null;
 };
-
-watch(() => page.props.auth?.user?.price_mode, () => {
-    if (showResources.value) calculateResources();
-});
 
 watch(() => props.recipe, () => {
     if (showResources.value) calculateResources();

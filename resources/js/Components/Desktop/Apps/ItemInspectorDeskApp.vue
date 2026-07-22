@@ -1,10 +1,10 @@
 <script setup>
 import { computed, onMounted, ref, watch } from 'vue';
 import axios from 'axios';
-import { usePage } from '@inertiajs/vue3';
 import CommunityContributorBadge from '@/Components/CommunityContributorBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
-import PriceConfidenceBadge from '@/Components/PriceConfidenceBadge.vue';
+import PriceModeSelector from '@/Components/PriceModeSelector.vue';
+import PriceSourceTag from '@/Components/PriceSourceTag.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 
 const props = defineProps({
@@ -16,7 +16,6 @@ const props = defineProps({
 
 const emit = defineEmits(['open-app']);
 
-const page = usePage();
 const { selectedServerId, isServerSelected } = useServerSelection();
 
 const loading = ref(false);
@@ -40,37 +39,50 @@ const itemPriceOverride = ref('');
 const preferenceSaving = ref(false);
 
 const formatNumber = (value) => new Intl.NumberFormat('fr-FR').format(Math.round(Number(value || 0)));
-const formatRelativeDate = (date) => {
-    if (!date) return 'récemment';
-
-    const days = Math.max(0, Math.floor((new Date() - new Date(date)) / 86400000));
-    if (days === 0) return "aujourd’hui";
-    if (days === 1) return 'hier';
-    if (days < 7) return `il y a ${days} jours`;
-    if (days < 30) return `il y a ${Math.floor(days / 7)} semaines`;
-    return `il y a ${Math.floor(days / 30)} mois`;
-};
-
 const findPriceForServer = (prices = []) => {
     if (!selectedServerId.value) return null;
     return prices.find((price) => Number(price.server_id || price.server?.id) === Number(selectedServerId.value)) || null;
 };
 
-const globalPriceMode = computed(() => page.props.auth?.user?.price_mode || 'community');
 const findPreferenceForServer = subject => findPriceForServer(subject?.price_preferences || []);
 const findPersonalPriceForServer = subject => findPriceForServer(subject?.personal_prices || []);
-const getEffectivePriceMode = subject => findPreferenceForServer(subject)?.mode || globalPriceMode.value;
-const findEffectivePriceForServer = subject => {
-    if (getEffectivePriceMode(subject) === 'personal') {
-        return findPersonalPriceForServer(subject) || findPriceForServer(subject?.prices || []);
+const normalizeItemPreference = mode => mode === 'personal' ? 'personal' : '';
+const getEffectivePriceMode = subject => findPreferenceForServer(subject)?.mode === 'personal' ? 'personal' : 'community';
+const resolveEffectivePriceForServer = subject => {
+    const mode = getEffectivePriceMode(subject);
+    const personal = findPersonalPriceForServer(subject);
+    const community = findPriceForServer(subject?.prices || []);
+
+    if (mode === 'personal' && personal) {
+        return {
+            price: personal,
+            source: {
+                type: 'personal',
+                label: 'Perso',
+                isFallback: false,
+                contributor: null,
+            },
+        };
     }
 
-    return findPriceForServer(subject?.prices || []);
+    if (community) {
+        return {
+            price: community,
+            source: {
+                type: 'community',
+                label: 'HDV',
+                isFallback: mode === 'personal',
+                contributor: community.user || null,
+            },
+        };
+    }
+
+    return { price: null, source: null };
 };
 
 const communityPrice = computed(() => findPriceForServer(item.value?.prices || []));
 const personalPrice = computed(() => findPersonalPriceForServer(item.value));
-const effectivePriceMode = computed(() => itemPriceOverride.value || globalPriceMode.value);
+const effectivePriceMode = computed(() => itemPriceOverride.value === 'personal' ? 'personal' : 'community');
 const currentPrice = computed(() => {
     if (effectivePriceMode.value === 'personal') {
         return personalPrice.value || communityPrice.value;
@@ -101,7 +113,8 @@ const recipeIngredients = computed(() => item.value?.recipe?.ingredients || []);
 
 const manualRows = computed(() => recipeIngredients.value.map((ingredient) => {
     const quantity = Number(ingredient.pivot?.quantity || ingredient.quantity || 1);
-    const price = findEffectivePriceForServer(ingredient);
+    const resolution = resolveEffectivePriceForServer(ingredient);
+    const price = resolution.price;
     const included = includedIngredients.value[ingredient.id] !== false;
 
     return {
@@ -109,6 +122,7 @@ const manualRows = computed(() => recipeIngredients.value.map((ingredient) => {
         quantity: quantity * normalizedCraftQuantity.value,
         included,
         unitPrice: price ? Number(price.price) : null,
+        priceSource: resolution.source,
         total: price && included ? Number(price.price) * quantity * normalizedCraftQuantity.value : 0,
         missing: !price && included,
     };
@@ -145,7 +159,8 @@ const craftVerdict = computed(() => {
 const resourceRows = computed(() => recipeIngredients.value.map((ingredient) => {
     const baseQuantity = Number(ingredient.pivot?.quantity || ingredient.quantity || 1);
     const quantity = baseQuantity * Number(craftQuantity.value || 1);
-    const price = findEffectivePriceForServer(ingredient);
+    const resolution = resolveEffectivePriceForServer(ingredient);
+    const price = resolution.price;
 
     return {
         id: ingredient.id,
@@ -157,6 +172,7 @@ const resourceRows = computed(() => recipeIngredients.value.map((ingredient) => 
         baseQuantity,
         quantity,
         unitPrice: price ? Number(price.price) : null,
+        priceSource: resolution.source,
         total: price ? Number(price.price) * quantity : null,
     };
 }));
@@ -270,7 +286,7 @@ const loadItem = async () => {
     try {
         const { data } = await axios.get(`/desktop/api/items/${props.payload.itemId}`);
         item.value = data.item;
-        itemPriceOverride.value = findPreferenceForServer(item.value)?.mode || '';
+        itemPriceOverride.value = normalizeItemPreference(findPreferenceForServer(item.value)?.mode);
         initializeIncludedIngredients();
         await loadOptimizedCalculation();
     } finally {
@@ -336,13 +352,20 @@ const saveItemPriceMode = async () => {
     }
 };
 
+const setItemPriceMode = mode => {
+    const preference = normalizeItemPreference(mode);
+    if (itemPriceOverride.value === preference || preferenceSaving.value) return;
+
+    itemPriceOverride.value = preference;
+    saveItemPriceMode();
+};
+
 watch(() => props.payload.itemId, loadItem);
 watch(selectedServerId, () => {
-    itemPriceOverride.value = findPreferenceForServer(item.value)?.mode || '';
+    itemPriceOverride.value = normalizeItemPreference(findPreferenceForServer(item.value)?.mode);
     loadOptimizedCalculation();
 });
 watch(calculationMode, () => loadOptimizedCalculation());
-watch(globalPriceMode, () => loadOptimizedCalculation());
 watch(item, initializeIncludedIngredients);
 onMounted(loadItem);
 </script>
@@ -419,6 +442,7 @@ onMounted(loadItem);
                                 <button type="button" class="min-w-0 flex-1 truncate text-left font-bold text-[#0b3f88] hover:underline" :class="!row.included ? 'text-slate-400 line-through' : ''" @click="openIngredient(row.ingredient)">
                                     x{{ row.quantity }} {{ row.ingredient.name }}
                                 </button>
+                                <PriceSourceTag v-if="row.unitPrice" :source="row.priceSource" />
                                 <strong class="shrink-0" :class="row.missing ? 'text-red-600' : 'text-slate-900'">{{ row.unitPrice ? `${formatNumber(row.total)} K` : '—' }}</strong>
                                 <button type="button" class="icon-btn" title="Copier" @click="copyItemName(row.ingredient.name)">⧉</button>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(row.ingredient)">↗</button>
@@ -430,6 +454,7 @@ onMounted(loadItem);
                             <div v-for="node in optimizedCalculation.craftTree.ingredients" :key="node.id" class="line-row">
                                 <button type="button" class="min-w-0 flex-1 truncate text-left font-bold text-[#0b3f88] hover:underline" @click="openIngredient(node)">x{{ optimizedNodeQuantity(node) }} {{ node.name }}</button>
                                 <span class="shrink-0 text-[9px] uppercase text-slate-500">{{ optimizedNodeMethod(node) }}</span>
+                                <PriceSourceTag v-if="node.usedMethod === 'buy'" :source="node.usedPriceSource" />
                                 <strong class="shrink-0">{{ optimizedNodeTotal(node) ? `${formatNumber(optimizedNodeTotal(node))} K` : '—' }}</strong>
                                 <button type="button" class="icon-btn" title="Copier" @click="copyItemName(node.name)">⧉</button>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(node)">↗</button>
@@ -447,7 +472,7 @@ onMounted(loadItem);
                     <div class="space-y-1.5 p-2">
                         <div v-if="!isServerSelected" class="compact-note">Sélectionne un serveur.</div>
                         <template v-else>
-                            <label class="block border border-[#c8c1aa] bg-[#eee9d4] p-1.5 text-[10px] text-slate-700">
+                            <div class="block border border-[#c8c1aa] bg-[#eee9d4] p-1.5 text-[10px] text-slate-700">
                                 <span class="mb-1 flex items-center justify-between gap-2">
                                     <strong>Source pour cet objet</strong>
                                     <span
@@ -457,20 +482,13 @@ onMounted(loadItem);
                                         {{ effectivePriceMode === 'personal' ? 'Prix perso' : 'Prix HDV' }}
                                     </span>
                                 </span>
-                                <span class="mb-1 block text-[9px] text-slate-500">
-                                    Global : {{ globalPriceMode === 'personal' ? 'Perso' : 'HDV' }}<template v-if="itemPriceOverride"> · choix spécifique</template>
-                                </span>
-                                <select
-                                    v-model="itemPriceOverride"
-                                    class="compact-input w-full"
+                                <PriceModeSelector
+                                    :model-value="itemPriceOverride"
                                     :disabled="preferenceSaving"
-                                    @change="saveItemPriceMode"
-                                >
-                                    <option value="">Suivre le choix global</option>
-                                    <option value="community">Toujours HDV</option>
-                                    <option value="personal">Toujours perso</option>
-                                </select>
-                            </label>
+                                    compact
+                                    @select="setItemPriceMode"
+                                />
+                            </div>
 
                             <div class="price-strip">
                                 <span>{{ isUsingPersonalPrice ? 'Prix perso' : 'Prix HDV' }}</span>
@@ -480,17 +498,13 @@ onMounted(loadItem);
                             <p v-if="effectivePriceMode === 'personal' && !personalPrice && communityPrice" class="text-[10px] text-slate-500">
                                 Aucun prix perso : le prix HDV est utilisé en repli.
                             </p>
-                            <PriceConfidenceBadge
-                                v-if="!isUsingPersonalPrice && communityPrice"
-                                :price="communityPrice"
-                                compact
-                            />
-                            <div v-if="!isUsingPersonalPrice && communityPrice?.user" class="space-y-1 text-[10px] text-slate-600">
-                                <p>
-                                    Dernier relevé par <strong>{{ communityPrice.user.name }}</strong> · {{ formatNumber(communityPrice.user.price_contributions_count) }} contribution(s)
-                                </p>
-                                <p>A contribué {{ formatRelativeDate(communityPrice.confidence_details?.latest_observation_at || communityPrice.updated_at) }}</p>
-                                <CommunityContributorBadge />
+                            <div v-if="!isUsingPersonalPrice && communityPrice" class="flex flex-wrap items-center gap-1 border-t border-[#ddd8c2] pt-1.5 text-[9px] text-slate-600">
+                                <CommunityContributorBadge
+                                    v-if="communityPrice.user"
+                                    :name="communityPrice.user.name"
+                                    :contribution-count="communityPrice.user.price_contributions_count"
+                                    compact
+                                />
                             </div>
 
                             <form class="flex gap-1" @submit.prevent="savePrice">
@@ -529,6 +543,7 @@ onMounted(loadItem);
                             <div class="flex min-w-0 items-center gap-1.5">
                                 <img v-if="row.image_url" :src="row.image_url" :alt="row.name" class="h-5 w-5 object-contain" />
                                 <button type="button" class="min-w-0 flex-1 truncate text-left font-bold text-[#0b3f88] hover:underline" @click="openIngredient(row.ingredient)">x{{ row.quantity }} {{ row.name }}</button>
+                                <PriceSourceTag v-if="row.unitPrice" :source="row.priceSource" />
                                 <strong class="shrink-0">{{ row.total ? `${formatNumber(row.total)} K` : '—' }}</strong>
                                 <button type="button" class="icon-btn" title="Copier" @click="copyItemName(row.name)">⧉</button>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(row.ingredient)">↗</button>

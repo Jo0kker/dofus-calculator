@@ -51,7 +51,6 @@ class PriceApiController extends Controller
                     'submitted_price' => $priceData['price'],
                     'price' => $price->price,
                     'status' => $price->status,
-                    'confidence_level' => $price->confidence_level,
                 ];
             }
 
@@ -129,7 +128,6 @@ class PriceApiController extends Controller
                     'submitted_price' => $resolvedPrice['price'],
                     'price' => $price->price,
                     'status' => $price->status,
-                    'confidence_level' => $price->confidence_level,
                 ];
             }
 
