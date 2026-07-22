@@ -73,10 +73,18 @@ it('lists and removes real account favorites from the desktop app', function () 
         'category' => 'Bois',
         'level' => 42,
     ]);
-    $this->user->favoriteItems()->attach($item->id);
 
     $this->actingAs($this->user)
-        ->getJson(route('desktop.api.favorites.index'))
+        ->postJson(route('desktop.api.favorites.store', $item))
+        ->assertOk()
+        ->assertJsonPath('is_favorite', true);
+
+    $this->postJson(route('desktop.api.favorites.store', $item))
+        ->assertOk();
+
+    expect($this->user->favoriteItems()->whereKey($item->id)->count())->toBe(1);
+
+    $this->getJson(route('desktop.api.favorites.index'))
         ->assertOk()
         ->assertJsonPath('favorites.0.id', $item->id)
         ->assertJsonPath('favorites.0.name', 'Favori du bureau')

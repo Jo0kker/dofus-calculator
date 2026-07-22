@@ -35,6 +35,15 @@ class DesktopFavoriteController extends Controller
         ]);
     }
 
+    public function store(Request $request, Item $item)
+    {
+        $this->ensureDesktopMode($request);
+
+        $request->user()->favoriteItems()->syncWithoutDetaching([$item->id]);
+
+        return response()->json(['is_favorite' => true]);
+    }
+
     public function destroy(Request $request, Item $item)
     {
         $this->ensureDesktopMode($request);

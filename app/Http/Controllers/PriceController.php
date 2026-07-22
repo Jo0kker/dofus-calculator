@@ -62,6 +62,12 @@ class PriceController extends Controller
             $validated['price_mode'] ?? null,
         );
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'price_mode' => $validated['price_mode'] === 'personal' ? 'personal' : 'community',
+            ]);
+        }
+
         return back();
     }
 

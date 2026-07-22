@@ -108,6 +108,7 @@ class DesktopItemController extends Controller
                 'price_preferences' => $item->pricePreferences->map(fn ($preference) => $this->pricePreferenceSummary($preference))->values(),
                 'recipe' => $this->recipePayload($item->recipe),
                 'used_in_recipes' => $usedInRecipes->map(fn (Recipe $recipe) => $this->itemSummary($recipe->item))->values(),
+                'is_favorite' => $request->user()->isFavorite($item),
             ],
         ]);
     }

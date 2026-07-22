@@ -312,6 +312,23 @@ it('returns an item to the default community mode when HDV is selected', functio
         ->and($this->item->fresh()->getPriceForServer($this->server, $this->user)->is($communityPrice))->toBeTrue();
 });
 
+it('returns a JSON response when a desktop control changes an item price mode', function () {
+    $this->actingAs($this->user)
+        ->putJson(route('prices.item-preference'), [
+            'item_id' => $this->item->id,
+            'server_id' => $this->server->id,
+            'price_mode' => 'personal',
+        ])
+        ->assertOk()
+        ->assertJsonPath('price_mode', 'personal');
+
+    expect(UserItemPricePreference::query()
+        ->where('user_id', $this->user->id)
+        ->where('server_id', $this->server->id)
+        ->where('item_id', $this->item->id)
+        ->value('mode'))->toBe('personal');
+});
+
 it('keeps item overrides isolated by server', function () {
     $otherServer = Server::create([
         'name' => 'Orukam Test',

@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
 
@@ -65,7 +65,11 @@ const removeFavorite = async (item) => {
 };
 
 watch(() => props.payload.seedItem, fetchFavorites);
-onMounted(fetchFavorites);
+onMounted(() => {
+    fetchFavorites();
+    window.addEventListener('dofus:favorites-changed', fetchFavorites);
+});
+onUnmounted(() => window.removeEventListener('dofus:favorites-changed', fetchFavorites));
 </script>
 
 <template>

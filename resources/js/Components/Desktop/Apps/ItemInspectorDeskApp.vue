@@ -1,5 +1,5 @@
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import CommunityContributorBadge from '@/Components/CommunityContributorBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
@@ -23,10 +23,16 @@ const item = ref(null);
 const priceInput = ref('');
 const priceSaving = ref(false);
 const priceMessage = ref('');
-const copyMessage = ref('');
+const copiedKey = ref('');
+const copyFeedbackText = ref('Copié');
+let copyMessageTimer = null;
+const isFavorite = ref(false);
+const favoriteSaving = ref(false);
 const resourcePriceInputs = ref({});
 const resourcePriceSaving = ref({});
 const resourcePriceMessage = ref({});
+const resourcePriceOverrides = ref({});
+const resourcePreferenceSaving = ref({});
 const reportComment = ref('');
 const reportSaving = ref(false);
 const reportMessage = ref('');
@@ -47,7 +53,10 @@ const findPriceForServer = (prices = []) => {
 const findPreferenceForServer = subject => findPriceForServer(subject?.price_preferences || []);
 const findPersonalPriceForServer = subject => findPriceForServer(subject?.personal_prices || []);
 const normalizeItemPreference = mode => mode === 'personal' ? 'personal' : '';
-const getEffectivePriceMode = subject => findPreferenceForServer(subject)?.mode === 'personal' ? 'personal' : 'community';
+const getResourcePriceMode = subject => Object.prototype.hasOwnProperty.call(resourcePriceOverrides.value, subject?.id)
+    ? resourcePriceOverrides.value[subject.id]
+    : normalizeItemPreference(findPreferenceForServer(subject)?.mode);
+const getEffectivePriceMode = subject => getResourcePriceMode(subject) === 'personal' ? 'personal' : 'community';
 const resolveEffectivePriceForServer = subject => {
     const mode = getEffectivePriceMode(subject);
     const personal = findPersonalPriceForServer(subject);
@@ -204,9 +213,61 @@ const openResourceList = () => {
     });
 };
 
-const copyItemName = async (name) => {
-    await navigator.clipboard?.writeText(name);
-    copyMessage.value = `Nom copié : ${name}`;
+const copyWithSelectionFallback = (value) => {
+    const textarea = document.createElement('textarea');
+    textarea.value = value;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+
+    const copied = document.execCommand('copy');
+    textarea.remove();
+
+    return copied;
+};
+
+const copyItemName = async (name, key) => {
+    copiedKey.value = key;
+    copyFeedbackText.value = 'Copié';
+    clearTimeout(copyMessageTimer);
+
+    let copied = copyWithSelectionFallback(name);
+
+    try {
+        if (!copied && navigator.clipboard?.writeText) {
+            await navigator.clipboard.writeText(name);
+            copied = true;
+        }
+
+        if (!copied) copyFeedbackText.value = 'Copie impossible';
+    } catch {
+        copyFeedbackText.value = 'Copie impossible';
+    }
+
+    copyMessageTimer = setTimeout(() => {
+        if (copiedKey.value === key) copiedKey.value = '';
+    }, 4000);
+};
+
+const toggleFavorite = async () => {
+    if (!item.value?.id || favoriteSaving.value) return;
+
+    favoriteSaving.value = true;
+    try {
+        if (isFavorite.value) {
+            await axios.delete(`/desktop/api/favorites/${item.value.id}`);
+            isFavorite.value = false;
+        } else {
+            await axios.post(`/desktop/api/favorites/${item.value.id}`);
+            isFavorite.value = true;
+        }
+
+        window.dispatchEvent(new CustomEvent('dofus:favorites-changed'));
+    } finally {
+        favoriteSaving.value = false;
+    }
 };
 
 const openIngredient = (ingredient) => {
@@ -238,6 +299,54 @@ const saveResourcePrice = async (ingredient) => {
         resourcePriceMessage.value[ingredient.id] = 'Erreur prix';
     } finally {
         resourcePriceSaving.value[ingredient.id] = false;
+    }
+};
+
+const applyResourcePricePreference = (ingredient, preference) => {
+    const preferences = (ingredient.price_preferences || [])
+        .filter(entry => Number(entry.server_id) !== Number(selectedServerId.value));
+
+    if (preference === 'personal') {
+        preferences.push({
+            server_id: Number(selectedServerId.value),
+            mode: 'personal',
+        });
+    }
+
+    ingredient.price_preferences = preferences;
+};
+
+const setResourcePriceMode = async (ingredient, mode) => {
+    if (!ingredient?.id || !selectedServerId.value || resourcePreferenceSaving.value[ingredient.id]) return;
+
+    const preference = normalizeItemPreference(mode);
+    if (getResourcePriceMode(ingredient) === preference) return;
+
+    resourcePriceOverrides.value = {
+        ...resourcePriceOverrides.value,
+        [ingredient.id]: preference,
+    };
+    resourcePreferenceSaving.value[ingredient.id] = true;
+    resourcePriceMessage.value[ingredient.id] = '';
+
+    try {
+        await axios.put('/prices/item-preference', {
+            item_id: ingredient.id,
+            server_id: selectedServerId.value,
+            price_mode: preference || null,
+        });
+        applyResourcePricePreference(ingredient, preference);
+        const overrides = { ...resourcePriceOverrides.value };
+        delete overrides[ingredient.id];
+        resourcePriceOverrides.value = overrides;
+        await loadOptimizedCalculation();
+    } catch {
+        const overrides = { ...resourcePriceOverrides.value };
+        delete overrides[ingredient.id];
+        resourcePriceOverrides.value = overrides;
+        resourcePriceMessage.value[ingredient.id] = 'Mode non enregistré';
+    } finally {
+        resourcePreferenceSaving.value[ingredient.id] = false;
     }
 };
 
@@ -281,11 +390,13 @@ const loadItem = async () => {
     loading.value = true;
     priceMessage.value = '';
     reportMessage.value = '';
-    copyMessage.value = '';
+    copiedKey.value = '';
+    resourcePriceOverrides.value = {};
 
     try {
         const { data } = await axios.get(`/desktop/api/items/${props.payload.itemId}`);
         item.value = data.item;
+        isFavorite.value = Boolean(data.item.is_favorite);
         itemPriceOverride.value = normalizeItemPreference(findPreferenceForServer(item.value)?.mode);
         initializeIncludedIngredients();
         await loadOptimizedCalculation();
@@ -368,6 +479,7 @@ watch(selectedServerId, () => {
 watch(calculationMode, () => loadOptimizedCalculation());
 watch(item, initializeIncludedIngredients);
 onMounted(loadItem);
+onUnmounted(() => clearTimeout(copyMessageTimer));
 </script>
 
 <template>
@@ -385,12 +497,27 @@ onMounted(loadItem);
                         <div class="min-w-0 flex-1">
                             <div class="flex min-w-0 items-center gap-1">
                                 <h3 class="min-w-0 flex-1 truncate text-[13px] font-black text-slate-950">{{ item.name }}</h3>
-                                <button class="icon-btn" type="button" title="Copier le nom" @click="copyItemName(item.name)">⧉</button>
+                                <button
+                                    class="icon-btn favorite-btn"
+                                    :class="isFavorite ? 'favorite-btn--active' : ''"
+                                    type="button"
+                                    :title="isFavorite ? 'Retirer des favoris' : 'Ajouter aux favoris'"
+                                    :aria-label="isFavorite ? `Retirer ${item.name} des favoris` : `Ajouter ${item.name} aux favoris`"
+                                    :disabled="favoriteSaving"
+                                    @click="toggleFavorite"
+                                >
+                                    {{ isFavorite ? '★' : '☆' }}
+                                </button>
+                                <span class="copy-action">
+                                    <button class="icon-btn" type="button" title="Copier le nom" @click="copyItemName(item.name, `item-${item.id}`)">⧉</button>
+                                    <Transition name="copy-pop">
+                                        <span v-if="copiedKey === `item-${item.id}`" class="copy-pop">{{ copyFeedbackText }}</span>
+                                    </Transition>
+                                </span>
                                 <button v-if="item.recipe" class="icon-btn" type="button" title="Liste ressources" @click="openResourceList">🧺</button>
                                 <button class="icon-btn" type="button" title="Surveiller" @click="emit('open-app', 'priceWatch', { seedItem: item })">⌁</button>
                             </div>
                             <p class="truncate text-[10px] text-slate-500">Niv. {{ item.level || '—' }} · {{ item.type || 'Type inconnu' }}</p>
-                            <p v-if="copyMessage" class="mt-0.5 truncate text-[10px] font-bold text-[#0b3f88]">{{ copyMessage }}</p>
                             <p v-if="descriptionText" class="mt-1 line-clamp-3 whitespace-pre-line text-[11px] leading-snug text-slate-700">{{ descriptionText }}</p>
                         </div>
                     </div>
@@ -444,7 +571,12 @@ onMounted(loadItem);
                                 </button>
                                 <PriceSourceTag v-if="row.unitPrice" :source="row.priceSource" />
                                 <strong class="shrink-0" :class="row.missing ? 'text-red-600' : 'text-slate-900'">{{ row.unitPrice ? `${formatNumber(row.total)} K` : '—' }}</strong>
-                                <button type="button" class="icon-btn" title="Copier" @click="copyItemName(row.ingredient.name)">⧉</button>
+                                <span class="copy-action">
+                                    <button type="button" class="icon-btn" title="Copier" @click="copyItemName(row.ingredient.name, `manual-${row.ingredient.id}`)">⧉</button>
+                                    <Transition name="copy-pop">
+                                        <span v-if="copiedKey === `manual-${row.ingredient.id}`" class="copy-pop">{{ copyFeedbackText }}</span>
+                                    </Transition>
+                                </span>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(row.ingredient)">↗</button>
                             </div>
                         </div>
@@ -456,7 +588,12 @@ onMounted(loadItem);
                                 <span class="shrink-0 text-[9px] uppercase text-slate-500">{{ optimizedNodeMethod(node) }}</span>
                                 <PriceSourceTag v-if="node.usedMethod === 'buy'" :source="node.usedPriceSource" />
                                 <strong class="shrink-0">{{ optimizedNodeTotal(node) ? `${formatNumber(optimizedNodeTotal(node))} K` : '—' }}</strong>
-                                <button type="button" class="icon-btn" title="Copier" @click="copyItemName(node.name)">⧉</button>
+                                <span class="copy-action">
+                                    <button type="button" class="icon-btn" title="Copier" @click="copyItemName(node.name, `optimized-${node.id || node.name}`)">⧉</button>
+                                    <Transition name="copy-pop">
+                                        <span v-if="copiedKey === `optimized-${node.id || node.name}`" class="copy-pop">{{ copyFeedbackText }}</span>
+                                    </Transition>
+                                </span>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(node)">↗</button>
                             </div>
                         </div>
@@ -545,10 +682,21 @@ onMounted(loadItem);
                                 <button type="button" class="min-w-0 flex-1 truncate text-left font-bold text-[#0b3f88] hover:underline" @click="openIngredient(row.ingredient)">x{{ row.quantity }} {{ row.name }}</button>
                                 <PriceSourceTag v-if="row.unitPrice" :source="row.priceSource" />
                                 <strong class="shrink-0">{{ row.total ? `${formatNumber(row.total)} K` : '—' }}</strong>
-                                <button type="button" class="icon-btn" title="Copier" @click="copyItemName(row.name)">⧉</button>
+                                <span class="copy-action">
+                                    <button type="button" class="icon-btn" title="Copier" @click="copyItemName(row.name, `resource-${row.id}`)">⧉</button>
+                                    <Transition name="copy-pop">
+                                        <span v-if="copiedKey === `resource-${row.id}`" class="copy-pop">{{ copyFeedbackText }}</span>
+                                    </Transition>
+                                </span>
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(row.ingredient)">↗</button>
                             </div>
-                            <div class="mt-1 flex gap-1 pl-6">
+                            <div class="mt-1 flex items-end gap-1 pl-6">
+                                <PriceModeSelector
+                                    :model-value="getResourcePriceMode(row.ingredient)"
+                                    :disabled="resourcePreferenceSaving[row.id]"
+                                    compact
+                                    @select="setResourcePriceMode(row.ingredient, $event)"
+                                />
                                 <input v-model="resourcePriceInputs[row.id]" type="number" min="1" class="compact-input min-w-0 flex-1" :placeholder="row.unitPrice ? `${formatNumber(row.unitPrice)} K/u` : 'Prix unité'" />
                                 <button type="button" class="icon-btn wide" title="Enregistrer prix" :disabled="resourcePriceSaving[row.id]" @click="saveResourcePrice(row.ingredient)">{{ resourcePriceSaving[row.id] ? '…' : '✓' }}</button>
                                 <span v-if="resourcePriceMessage[row.id]" class="truncate py-0.5 text-[10px] font-bold text-[#0b3f88]">{{ resourcePriceMessage[row.id] }}</span>
@@ -639,6 +787,77 @@ onMounted(loadItem);
 
 .icon-btn.wide {
     min-width: 24px;
+}
+
+.favorite-btn {
+    font-size: 14px;
+}
+
+.favorite-btn--active {
+    border-color: #b7791f;
+    background: linear-gradient(#fff8cf, #f5d56a);
+    color: #8a4b00;
+}
+
+.copy-action {
+    position: relative;
+    display: inline-grid;
+    flex-shrink: 0;
+}
+
+.copy-pop {
+    position: absolute;
+    top: 50%;
+    right: calc(100% + 5px);
+    z-index: 30;
+    transform: translateY(-50%);
+    border: 1px solid #07366b;
+    background: #0b4c95;
+    padding: 2px 5px;
+    color: white;
+    font-size: 9px;
+    font-weight: 900;
+    line-height: 1.2;
+    pointer-events: none;
+    white-space: nowrap;
+    box-shadow: 1px 1px 0 rgb(0 0 0 / 20%);
+}
+
+.copy-pop::after {
+    position: absolute;
+    top: 50%;
+    left: 100%;
+    width: 0;
+    height: 0;
+    transform: translateY(-50%);
+    border-top: 3px solid transparent;
+    border-bottom: 3px solid transparent;
+    border-left: 4px solid #0b4c95;
+    content: '';
+}
+
+.copy-pop-enter-active {
+    animation: copy-pop-in .18s ease-out;
+}
+
+.copy-pop-leave-active {
+    transition: opacity .14s ease;
+}
+
+.copy-pop-leave-to {
+    opacity: 0;
+}
+
+@keyframes copy-pop-in {
+    from {
+        opacity: 0;
+        transform: translate(4px, -50%) scale(.85);
+    }
+
+    to {
+        opacity: 1;
+        transform: translate(0, -50%) scale(1);
+    }
 }
 
 .segmented {

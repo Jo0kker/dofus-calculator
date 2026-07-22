@@ -36,6 +36,7 @@ Route::middleware([
         Route::get('/items', [DesktopItemController::class, 'index'])->name('items.index');
         Route::get('/items/{item}', [DesktopItemController::class, 'show'])->name('items.show');
         Route::get('/favorites', [DesktopFavoriteController::class, 'index'])->name('favorites.index');
+        Route::post('/favorites/{item}', [DesktopFavoriteController::class, 'store'])->name('favorites.store');
         Route::delete('/favorites/{item}', [DesktopFavoriteController::class, 'destroy'])->name('favorites.destroy');
         Route::get('/api-tokens', [DesktopApiTokenController::class, 'index'])->name('api-tokens.index');
         Route::post('/api-tokens', [DesktopApiTokenController::class, 'store'])->name('api-tokens.store');

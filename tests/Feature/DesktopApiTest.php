@@ -141,6 +141,7 @@ it('returns a desktop item inspector payload', function () {
         'item_id' => $item->id,
         'mode' => 'personal',
     ]);
+    $user->favoriteItems()->attach($item->id);
 
     $response = $this->getJson("/desktop/api/items/{$item->id}");
 
@@ -166,6 +167,7 @@ it('returns a desktop item inspector payload', function () {
         ->assertJsonMissingPath('item.prices.0.confidence_version')
         ->assertJsonPath('item.personal_prices.0.price', 950)
         ->assertJsonPath('item.price_preferences.0.mode', 'personal')
+        ->assertJsonPath('item.is_favorite', true)
         ->assertJsonStructure([
             'item' => [
                 'prices',
