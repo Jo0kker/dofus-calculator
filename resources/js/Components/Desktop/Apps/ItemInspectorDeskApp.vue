@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import axios from 'axios';
 import CommunityContributorBadge from '@/Components/CommunityContributorBadge.vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
-import PriceModeSelector from '@/Components/PriceModeSelector.vue';
+import DesktopPriceModeSelector from '@/Components/Desktop/DesktopPriceModeSelector.vue';
 import PriceSourceTag from '@/Components/PriceSourceTag.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 
@@ -619,10 +619,10 @@ onUnmounted(() => clearTimeout(copyMessageTimer));
                                         {{ effectivePriceMode === 'personal' ? 'Prix perso' : 'Prix HDV' }}
                                     </span>
                                 </span>
-                                <PriceModeSelector
+                                <DesktopPriceModeSelector
                                     :model-value="itemPriceOverride"
                                     :disabled="preferenceSaving"
-                                    compact
+                                    :show-label="false"
                                     @select="setItemPriceMode"
                                 />
                             </div>
@@ -691,10 +691,9 @@ onUnmounted(() => clearTimeout(copyMessageTimer));
                                 <button type="button" class="icon-btn" title="Ouvrir" @click="openIngredient(row.ingredient)">↗</button>
                             </div>
                             <div class="mt-1 flex items-end gap-1 pl-6">
-                                <PriceModeSelector
+                                <DesktopPriceModeSelector
                                     :model-value="getResourcePriceMode(row.ingredient)"
                                     :disabled="resourcePreferenceSaving[row.id]"
-                                    compact
                                     @select="setResourcePriceMode(row.ingredient, $event)"
                                 />
                                 <input v-model="resourcePriceInputs[row.id]" type="number" min="1" class="compact-input min-w-0 flex-1" :placeholder="row.unitPrice ? `${formatNumber(row.unitPrice)} K/u` : 'Prix unité'" />
