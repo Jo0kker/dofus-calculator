@@ -9,26 +9,103 @@
             </h1>
         </template>
 
-        <div class="py-12">
+        <div class="py-8 sm:py-12">
             <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-
-                <div v-if="!selectedServer" class="bg-white rounded-lg shadow p-6 text-center">
-                    <p class="text-gray-500">Veuillez sélectionner un serveur pour analyser vos favoris</p>
+                <div v-if="!selectedServer && favorites.length" class="mx-4 mb-5 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800 sm:mx-0">
+                    Sélectionnez un serveur pour afficher les prix et comparer achat et craft. Vous pouvez tout de même gérer vos favoris.
                 </div>
 
-                <div v-else-if="!favorites || favorites.length === 0" class="bg-white rounded-lg shadow p-6 text-center">
+                <div v-if="!favorites.length" class="mx-4 bg-white rounded-lg shadow p-8 text-center sm:mx-0">
                     <p class="text-gray-500">Aucun favori ajouté. Ajoutez des items depuis la page des items !</p>
                 </div>
 
-                <div v-else class="space-y-6">
+                <div v-else>
+                    <section class="mx-4 mb-6 rounded-xl border border-gray-200 bg-white p-4 shadow-sm sm:mx-0 sm:p-5" aria-label="Gestion des favoris">
+                        <div class="flex flex-col gap-4 lg:flex-row lg:items-end">
+                            <div class="min-w-0 flex-1">
+                                <label for="favorite-search" class="mb-1.5 block text-sm font-medium text-gray-700">Rechercher</label>
+                                <div class="relative">
+                                    <Search class="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-400" aria-hidden="true" />
+                                    <input
+                                        id="favorite-search"
+                                        v-model="search"
+                                        type="search"
+                                        placeholder="Nom, type ou catégorie…"
+                                        class="w-full rounded-lg border-gray-300 py-2.5 pl-9 pr-9 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                    />
+                                    <button
+                                        v-if="search"
+                                        type="button"
+                                        class="absolute right-2 top-1/2 rounded p-1 text-gray-400 transition hover:bg-gray-100 hover:text-gray-700"
+                                        aria-label="Effacer la recherche"
+                                        @click="search = ''"
+                                    >
+                                        <X class="h-4 w-4" aria-hidden="true" />
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[30rem]">
+                                <div>
+                                    <label for="favorite-type" class="mb-1.5 block text-sm font-medium text-gray-700">Type</label>
+                                    <select id="favorite-type" v-model="selectedType" class="w-full rounded-lg border-gray-300 py-2.5 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="">Tous les types</option>
+                                        <option v-for="type in availableTypes" :key="type" :value="type">{{ type }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="favorite-sort" class="mb-1.5 block text-sm font-medium text-gray-700">Trier par</label>
+                                    <select id="favorite-sort" v-model="sortBy" class="w-full rounded-lg border-gray-300 py-2.5 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="recent">Ajout récent</option>
+                                        <option value="name">Nom</option>
+                                        <option value="level">Niveau décroissant</option>
+                                        <option value="savings">Économie décroissante</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mt-4 flex flex-col gap-3 border-t border-gray-100 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                            <div class="flex flex-wrap gap-2" aria-label="Filtrer par meilleure option">
+                                <button
+                                    v-for="option in optionFilters"
+                                    :key="option.value"
+                                    type="button"
+                                    :class="bestOptionFilter === option.value
+                                        ? 'border-blue-600 bg-blue-600 text-white shadow-sm'
+                                        : 'border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:text-blue-700'"
+                                    class="rounded-full border px-3 py-1.5 text-sm font-medium transition"
+                                    :aria-pressed="bestOptionFilter === option.value"
+                                    @click="bestOptionFilter = option.value"
+                                >
+                                    {{ option.label }}
+                                    <span class="ml-1 opacity-75">{{ option.count }}</span>
+                                </button>
+                            </div>
+
+                            <div class="flex items-center justify-between gap-3 text-sm text-gray-500 sm:justify-end">
+                                <span>{{ resultLabel }}</span>
+                                <button
+                                    v-if="hasActiveFilters"
+                                    type="button"
+                                    class="font-medium text-blue-600 transition hover:text-blue-800"
+                                    @click="resetFilters"
+                                >
+                                    Réinitialiser
+                                </button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <div v-if="filteredFavorites.length" class="space-y-6">
                     <div 
-                        v-for="favorite in favorites" 
+                        v-for="favorite in filteredFavorites"
                         :key="favorite.item.id"
-                        class="bg-white rounded-lg shadow overflow-hidden"
+                        class="mx-4 overflow-hidden rounded-lg bg-white shadow sm:mx-0"
                     >
                         <div class="p-6">
                             <!-- Item Header -->
-                            <div class="flex items-start justify-between mb-4">
+                            <div class="mb-4 flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
                                 <div class="flex items-center space-x-4">
                                     <button type="button" @click="openItemDetails(favorite.item)">
                                         <img 
@@ -51,12 +128,24 @@
                                 </div>
                                 
                                 <!-- Best Option Badge -->
-                                <div class="text-right">
+                                <div class="flex w-full shrink-0 items-start justify-between gap-3 text-right sm:w-auto sm:justify-start sm:pl-3">
+                                    <button
+                                        type="button"
+                                        class="inline-flex items-center gap-1.5 rounded-lg border border-red-200 bg-white px-2.5 py-2 text-sm font-medium text-red-600 transition hover:border-red-300 hover:bg-red-50 disabled:cursor-wait disabled:opacity-50"
+                                        :disabled="removingIds.has(favorite.item.id)"
+                                        :aria-label="`Retirer ${favorite.item.name} des favoris`"
+                                        @click="removeFavorite(favorite.item)"
+                                    >
+                                        <StarOff class="h-4 w-4" aria-hidden="true" />
+                                        <span class="hidden sm:inline">Retirer</span>
+                                    </button>
+                                    <div>
                                     <div :class="getBestOptionClass(favorite.best_option)" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mb-2">
                                         {{ getBestOptionText(favorite.best_option) }}
                                     </div>
                                     <div v-if="favorite.savings > 0" class="text-sm text-green-600 font-semibold">
                                         Économie: {{ formatNumber(favorite.savings) }} K
+                                    </div>
                                     </div>
                                 </div>
                             </div>
@@ -85,6 +174,14 @@
                             </div>
                         </div>
                     </div>
+                    </div>
+
+                    <div v-else class="mx-4 rounded-lg border border-dashed border-gray-300 bg-white px-6 py-10 text-center sm:mx-0">
+                        <p class="font-medium text-gray-700">Aucun favori ne correspond à ces filtres.</p>
+                        <button type="button" class="mt-2 text-sm font-medium text-blue-600 hover:text-blue-800" @click="resetFilters">
+                            Afficher tous les favoris
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -92,8 +189,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { computed, reactive, ref } from 'vue';
 import { router, Link, Head } from '@inertiajs/vue3';
+import { Search, StarOff, X } from '@lucide/vue';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 import { useDesktopBridge } from '@/Composables/useDesktopBridge';
@@ -158,8 +256,81 @@ const props = defineProps({
     favorites: Array,
 });
 
-const { selectedServer, selectedServerId } = useServerSelection();
+const { selectedServer } = useServerSelection();
 const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
+const search = ref('');
+const selectedType = ref('');
+const bestOptionFilter = ref('all');
+const sortBy = ref('recent');
+const removingIds = reactive(new Set());
+
+const availableTypes = computed(() => [...new Set(
+    props.favorites
+        .map((favorite) => favorite.item.type)
+        .filter(Boolean),
+)].sort((a, b) => a.localeCompare(b, 'fr')));
+
+const optionFilters = computed(() => [
+    { value: 'all', label: 'Tous', count: props.favorites.length },
+    { value: 'buy', label: 'À acheter', count: props.favorites.filter((favorite) => favorite.best_option === 'buy').length },
+    { value: 'craft', label: 'À crafter', count: props.favorites.filter((favorite) => favorite.best_option === 'craft').length },
+    { value: 'unavailable', label: 'Sans estimation', count: props.favorites.filter((favorite) => favorite.best_option === 'unavailable').length },
+]);
+
+const filteredFavorites = computed(() => {
+    const query = search.value.trim().toLocaleLowerCase('fr');
+    const favorites = props.favorites.filter((favorite) => {
+        const item = favorite.item;
+        const matchesSearch = !query || [item.name, item.type, item.category]
+            .filter(Boolean)
+            .some((value) => value.toLocaleLowerCase('fr').includes(query));
+        const matchesType = !selectedType.value || item.type === selectedType.value;
+        const matchesOption = bestOptionFilter.value === 'all' || favorite.best_option === bestOptionFilter.value;
+
+        return matchesSearch && matchesType && matchesOption;
+    });
+
+    return favorites.sort((left, right) => {
+        if (sortBy.value === 'name') {
+            return left.item.name.localeCompare(right.item.name, 'fr');
+        }
+
+        if (sortBy.value === 'level') {
+            return (right.item.level || 0) - (left.item.level || 0);
+        }
+
+        if (sortBy.value === 'savings') {
+            return (right.savings || 0) - (left.savings || 0);
+        }
+
+        return new Date(right.item.pivot?.created_at || 0) - new Date(left.item.pivot?.created_at || 0);
+    });
+});
+
+const hasActiveFilters = computed(() => search.value !== ''
+    || selectedType.value !== ''
+    || bestOptionFilter.value !== 'all'
+    || sortBy.value !== 'recent');
+
+const resultLabel = computed(() => {
+    const count = filteredFavorites.value.length;
+    return `${count} favori${count > 1 ? 's' : ''} affiché${count > 1 ? 's' : ''}`;
+});
+
+const resetFilters = () => {
+    search.value = '';
+    selectedType.value = '';
+    bestOptionFilter.value = 'all';
+    sortBy.value = 'recent';
+};
+
+const removeFavorite = (item) => {
+    removingIds.add(item.id);
+    router.delete(route('favorites.destroy', item.id), {
+        preserveScroll: true,
+        onFinish: () => removingIds.delete(item.id),
+    });
+};
 
 const openItemDetails = (item) => {
     const itemUrl = route('items.show', item.id);

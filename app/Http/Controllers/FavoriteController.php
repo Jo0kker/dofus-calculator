@@ -39,6 +39,7 @@ class FavoriteController extends Controller
                     }
                 },
             ])
+            ->orderByPivot('created_at', 'desc')
             ->get();
 
         // Calculer les coûts récursifs pour chaque favori
@@ -72,6 +73,13 @@ class FavoriteController extends Controller
         $isFavorite = auth()->user()->toggleFavorite($item);
 
         return back()->with('success', $isFavorite ? 'Ajouté aux favoris' : 'Retiré des favoris');
+    }
+
+    public function destroy(Item $item)
+    {
+        auth()->user()->favoriteItems()->detach($item->id);
+
+        return back()->with('success', 'Retiré des favoris');
     }
 
     private function analyzeItem(Item $item, Server $server, User $user): array

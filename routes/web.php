@@ -3,6 +3,7 @@
 use App\Http\Controllers\ApiTokenController;
 use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\Desktop\DesktopApiTokenController;
+use App\Http\Controllers\Desktop\DesktopFavoriteController;
 use App\Http\Controllers\Desktop\DesktopItemController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
@@ -34,6 +35,8 @@ Route::middleware([
     Route::prefix('desktop/api')->name('desktop.api.')->group(function () {
         Route::get('/items', [DesktopItemController::class, 'index'])->name('items.index');
         Route::get('/items/{item}', [DesktopItemController::class, 'show'])->name('items.show');
+        Route::get('/favorites', [DesktopFavoriteController::class, 'index'])->name('favorites.index');
+        Route::delete('/favorites/{item}', [DesktopFavoriteController::class, 'destroy'])->name('favorites.destroy');
         Route::get('/api-tokens', [DesktopApiTokenController::class, 'index'])->name('api-tokens.index');
         Route::post('/api-tokens', [DesktopApiTokenController::class, 'store'])->name('api-tokens.store');
         Route::delete('/api-tokens/{token}', [DesktopApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
@@ -54,6 +57,7 @@ Route::middleware([
     // Favorites routes
     Route::get('/favorites', [FavoriteController::class, 'index'])->name('favorites.index');
     Route::post('/favorites/{item}/toggle', [FavoriteController::class, 'toggle'])->name('favorites.toggle');
+    Route::delete('/favorites/{item}', [FavoriteController::class, 'destroy'])->name('favorites.destroy');
 
     // API Token routes
     Route::get('/api-tokens', [ApiTokenController::class, 'index'])->name('api-tokens.index');
