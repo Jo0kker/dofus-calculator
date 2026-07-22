@@ -38,10 +38,16 @@ export const desktopAppRegistry = [
     { id: 'apiTokens', title: 'API Tokens', icon: '🔑', component: 'apiTokens', width: 840, height: 640, group: 'Compte', description: 'Créer et gérer les clés API' },
 ];
 
+const internalDesktopApps = [
+    { id: 'itemInspector', title: 'Fiche item', icon: '📦', component: 'itemInspector', width: 940, height: 680 },
+    { id: 'craftCart', title: 'Liste des ressources', icon: '🧺', component: 'craftCart', width: 720, height: 580 },
+    { id: 'compare', title: 'Comparateur', icon: '⚖️', component: 'compare', width: 760, height: 560 },
+];
+
 export const legacyDesktopApps = [
     { id: 'legacy-items', title: 'Catalogue items', url: '/items', icon: '🧰', width: 1040, height: 700, group: 'Pages' },
     { id: 'legacy-favorites', title: 'Page favoris', url: '/favorites', icon: '⭐', width: 940, height: 660, group: 'Pages' },
     { id: 'profile', title: 'Profil', url: '/user/profile', icon: '👤', width: 980, height: 720, group: 'Compte' },
 ];
 
-export const findDesktopApp = (id) => desktopAppRegistry.find((app) => app.id === id);
+export const findDesktopApp = (id) => [...desktopAppRegistry, ...internalDesktopApps].find((app) => app.id === id);

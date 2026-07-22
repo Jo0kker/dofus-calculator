@@ -1,8 +1,8 @@
 <template>
-    <div :class="compact ? 'w-full' : 'flex items-center'">
+    <div :class="compact ? 'w-full space-y-2' : 'flex items-center gap-3'">
         <!-- Version mobile : sélecteur compact -->
         <div :class="compact ? 'flex w-full flex-col gap-1' : 'flex items-center sm:hidden'">
-            <label :class="compact ? 'text-[11px] font-semibold uppercase tracking-wide text-slate-200' : 'text-xs text-gray-600 mr-1'">
+            <label :class="compact ? 'text-[11px] font-semibold uppercase tracking-wide text-slate-700' : 'mr-1 text-xs text-gray-600 dark:text-gray-300'">
                 Serveur
             </label>
             <select
@@ -21,7 +21,7 @@
 
         <!-- Version desktop : dropdown classique -->
         <div v-if="!compact" class="hidden sm:flex items-center space-x-3">
-            <span class="text-sm font-medium text-gray-700">Serveur:</span>
+            <span class="text-sm font-medium text-gray-700 dark:text-gray-200">Serveur:</span>
             <select
                 :value="selectedServerId"
                 @change="handleServerChange"

@@ -1,0 +1,519 @@
+<?php
+
+use App\Models\ApiLog;
+use App\Models\Item;
+use App\Models\ItemPrice;
+use App\Models\PersonalItemPrice;
+use App\Models\PriceHistory;
+use App\Models\Recipe;
+use App\Models\Server;
+use App\Models\User;
+use App\Models\UserItemPricePreference;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Sanctum\Sanctum;
+
+beforeEach(function () {
+    $this->withoutVite();
+
+    $this->server = Server::create([
+        'name' => 'Imagiro Test',
+        'slug' => 'imagiro-test',
+    ]);
+
+    $this->item = Item::create([
+        'dofusdb_id' => 987654,
+        'name' => 'Potion de test',
+    ]);
+
+    $this->user = User::factory()->create([
+        'server_id' => $this->server->id,
+    ]);
+});
+
+it('stores a personal price without changing the community price or contribution history', function () {
+    ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $this->actingAs($this->user)
+        ->post(route('prices.store'), [
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => 750,
+            'price_mode' => 'personal',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(ItemPrice::first()->price)->toBe(1000)
+        ->and(PersonalItemPrice::first()->price)->toBe(750)
+        ->and(PriceHistory::count())->toBe(0)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(0);
+});
+
+it('keeps every observation but counts the same item only once per day', function () {
+    $this->actingAs($this->user);
+
+    foreach ([1000, 1200] as $price) {
+        $this->post(route('prices.store'), [
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => $price,
+            'price_mode' => 'community',
+        ])->assertSessionHasNoErrors();
+    }
+
+    expect(ItemPrice::first()->price)->toBe(1200)
+        ->and(PriceHistory::where('created_by', $this->user->id)->count())->toBe(2)
+        ->and($this->user->submittedPrices()->count())->toBe(2)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+});
+
+it('counts a new contribution for the same item on another day', function () {
+    $this->actingAs($this->user);
+
+    $this->post(route('prices.store'), [
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'price_mode' => 'community',
+    ])->assertSessionHasNoErrors();
+
+    $this->travel(1)->day();
+
+    $this->post(route('prices.store'), [
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1200,
+        'price_mode' => 'community',
+    ])->assertSessionHasNoErrors();
+
+    expect(PriceHistory::count())->toBe(2)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(2);
+});
+
+it('uses a personal price in calculations and falls back to the community price', function () {
+    $communityPrice = ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    UserItemPricePreference::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'mode' => 'personal',
+    ]);
+
+    expect($this->item->getPriceForServer($this->server, $this->user)->is($communityPrice))->toBeTrue();
+
+    $personalPrice = PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 750,
+    ]);
+
+    expect($this->item->getPriceForServer($this->server, $this->user)->is($personalPrice))->toBeTrue();
+});
+
+it('exposes the price source and contributor used by recursive recipe calculations', function () {
+    $contributor = User::factory()->create(['price_contributions_count' => 27]);
+    $craftedItem = Item::create([
+        'dofusdb_id' => 987655,
+        'name' => 'Objet crafté de test',
+    ]);
+    $recipe = Recipe::create([
+        'item_id' => $craftedItem->id,
+        'quantity_produced' => 1,
+        'profession' => 'Testeur',
+        'profession_level' => 1,
+    ]);
+    $recipe->ingredients()->attach($this->item->id, ['quantity' => 2]);
+
+    ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $contributor->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('items.calculate-recursive', [
+            'item' => $craftedItem,
+            'server_id' => $this->server->id,
+        ]))
+        ->assertOk()
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.type', 'community')
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.isFallback', false)
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.contributor.name', $contributor->name)
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.contributor.price_contributions_count', 27);
+
+    UserItemPricePreference::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'mode' => 'personal',
+    ]);
+    PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 750,
+    ]);
+
+    $this->getJson(route('items.calculate-recursive', [
+        'item' => $craftedItem,
+        'server_id' => $this->server->id,
+    ]))
+        ->assertOk()
+        ->assertJsonPath('craftTree.ingredients.0.usedPrice', 750)
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.type', 'personal')
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.isFallback', false)
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource.contributor', null);
+});
+
+it('does not expose a price source when craft is the selected method', function () {
+    $craftedIngredient = Item::create([
+        'dofusdb_id' => 987656,
+        'name' => 'Ingrédient craftable',
+    ]);
+    $baseResource = Item::create([
+        'dofusdb_id' => 987657,
+        'name' => 'Ressource de base',
+    ]);
+    $resultItem = Item::create([
+        'dofusdb_id' => 987658,
+        'name' => 'Objet final',
+    ]);
+
+    $ingredientRecipe = Recipe::create([
+        'item_id' => $craftedIngredient->id,
+        'quantity_produced' => 1,
+    ]);
+    $ingredientRecipe->ingredients()->attach($baseResource->id, ['quantity' => 1]);
+    $resultRecipe = Recipe::create([
+        'item_id' => $resultItem->id,
+        'quantity_produced' => 1,
+    ]);
+    $resultRecipe->ingredients()->attach($craftedIngredient->id, ['quantity' => 1]);
+
+    ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $baseResource->id,
+        'price' => 100,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+    ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $craftedIngredient->id,
+        'price' => 500,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $this->actingAs($this->user)
+        ->getJson(route('items.calculate-recursive', [
+            'item' => $resultItem,
+            'server_id' => $this->server->id,
+        ]))
+        ->assertOk()
+        ->assertJsonPath('craftTree.ingredients.0.usedMethod', 'craft')
+        ->assertJsonPath('craftTree.ingredients.0.usedPriceSource', null);
+});
+
+it('exposes the current contributor and their historical contribution count without their email', function () {
+    $this->actingAs($this->user);
+
+    foreach ([900, 1000, 1100] as $price) {
+        $this->post(route('prices.store'), [
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => $price,
+            'price_mode' => 'community',
+        ])->assertSessionHasNoErrors();
+    }
+
+    $response = $this->actingAs($this->user)
+        ->get(route('items.show', $this->item));
+
+    $response
+        ->assertOk()
+        ->assertInertia(fn (Assert $page) => $page
+            ->component('Items/Show')
+            ->where('item.prices.0.user.name', $this->user->name)
+            ->where('item.prices.0.user.price_contributions_count', 1)
+            ->missing('item.prices.0.user.price_reliability_score')
+            ->missing('item.prices.0.user.price_reliability_samples')
+            ->missing('item.prices.0.confidence_score')
+            ->missing('item.prices.0.confidence_level')
+            ->missing('item.prices.0.recent_observations_count')
+            ->missing('item.prices.0.recent_contributors_count')
+            ->missing('item.prices.0.confidence_details')
+            ->missing('item.prices.0.confidence_computed_at')
+            ->missing('item.prices.0.confidence_version')
+            ->missing('item.price_histories.0.reliability_snapshot')
+            ->missing('item.price_histories.0.evaluation_score')
+            ->missing('item.price_histories.0.influence_weight')
+            ->missing('auth.user.price_reliability_score')
+            ->missing('auth.user.price_reliability_samples')
+            ->missing('item.prices.0.user.email')
+        );
+});
+
+it('uses the community price by default when no item preference exists', function () {
+    $communityPrice = ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+    PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 750,
+    ]);
+
+    expect($this->item->getPriceModeForServer($this->server, $this->user))->toBe('community')
+        ->and($this->item->getPriceForServer($this->server, $this->user)->is($communityPrice))->toBeTrue();
+});
+
+it('lets an item explicitly use the personal price for one server', function () {
+    $communityPrice = ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $personalPrice = PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 750,
+    ]);
+
+    expect($this->item->getPriceForServer($this->server, $this->user)->is($communityPrice))->toBeTrue();
+
+    $this->actingAs($this->user)
+        ->put(route('prices.item-preference'), [
+            'item_id' => $this->item->id,
+            'server_id' => $this->server->id,
+            'price_mode' => 'personal',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($this->item->fresh()->getPriceForServer($this->server, $this->user)->is($personalPrice))->toBeTrue()
+        ->and(UserItemPricePreference::first()->mode)->toBe('personal');
+
+    $this->get(route('items.show', $this->item))
+        ->assertInertia(fn (Assert $page) => $page
+            ->where('item.price_preferences.0.mode', 'personal')
+        );
+});
+
+it('returns an item to the default community mode when HDV is selected', function () {
+    $communityPrice = ItemPrice::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $this->user->id,
+        'status' => ItemPrice::STATUS_APPROVED,
+    ]);
+
+    $personalPrice = PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 750,
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('prices.item-preference'), [
+            'item_id' => $this->item->id,
+            'server_id' => $this->server->id,
+            'price_mode' => 'personal',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect($this->item->fresh()->getPriceForServer($this->server, $this->user)->is($personalPrice))->toBeTrue();
+
+    $this->put(route('prices.item-preference'), [
+        'item_id' => $this->item->id,
+        'server_id' => $this->server->id,
+        'price_mode' => 'community',
+    ])->assertSessionHasNoErrors();
+
+    expect(UserItemPricePreference::count())->toBe(0)
+        ->and($this->item->fresh()->getPriceModeForServer($this->server, $this->user))->toBe('community')
+        ->and($this->item->fresh()->getPriceForServer($this->server, $this->user)->is($communityPrice))->toBeTrue();
+});
+
+it('returns a JSON response when a desktop control changes an item price mode', function () {
+    $this->actingAs($this->user)
+        ->putJson(route('prices.item-preference'), [
+            'item_id' => $this->item->id,
+            'server_id' => $this->server->id,
+            'price_mode' => 'personal',
+        ])
+        ->assertOk()
+        ->assertJsonPath('price_mode', 'personal');
+
+    expect(UserItemPricePreference::query()
+        ->where('user_id', $this->user->id)
+        ->where('server_id', $this->server->id)
+        ->where('item_id', $this->item->id)
+        ->value('mode'))->toBe('personal');
+});
+
+it('keeps item overrides isolated by server', function () {
+    $otherServer = Server::create([
+        'name' => 'Orukam Test',
+        'slug' => 'orukam-test',
+    ]);
+
+    PersonalItemPrice::create([
+        'user_id' => $this->user->id,
+        'server_id' => $otherServer->id,
+        'item_id' => $this->item->id,
+        'price' => 500,
+    ]);
+
+    $this->actingAs($this->user)
+        ->put(route('prices.item-preference'), [
+            'item_id' => $this->item->id,
+            'server_id' => $this->server->id,
+            'price_mode' => 'personal',
+        ]);
+
+    expect($this->item->fresh()->getPriceModeForServer($this->server, $this->user))->toBe('personal')
+        ->and($this->item->fresh()->getPriceModeForServer($otherServer, $this->user))->toBe('community');
+});
+
+it('counts API price submissions in the same contribution history', function () {
+    Sanctum::actingAs($this->user, ['write']);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [[
+            'item_id' => $this->item->id,
+            'price' => 1450,
+        ]],
+    ])->assertOk();
+
+    expect($this->user->submittedPrices()->count())->toBe(1)
+        ->and($this->user->submittedPrices()->first()->price)->toBe(1450)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+});
+
+it('counts every distinct item in a large API import', function () {
+    Sanctum::actingAs($this->user, ['write']);
+
+    $items = collect(range(1, 15))->map(fn (int $index) => Item::create([
+        'dofusdb_id' => 990000 + $index,
+        'name' => "Ressource importée {$index}",
+    ]));
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => $items->map(fn (Item $item, int $index) => [
+            'item_id' => $item->id,
+            'price' => 1000 + $index,
+        ])->all(),
+    ])->assertOk()
+        ->assertJsonPath('updated_count', 15)
+        ->assertJsonMissingPath('updated_prices.0.confidence_level');
+
+    expect(PriceHistory::where('created_by', $this->user->id)->count())->toBe(15)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(15);
+});
+
+it('deduplicates repeated items in one API import and rejects invalid prices', function () {
+    Sanctum::actingAs($this->user, ['write']);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [
+            ['item_id' => $this->item->id, 'price' => 1000],
+            ['item_id' => $this->item->id, 'price' => 1250],
+        ],
+    ])->assertOk()
+        ->assertJsonPath('updated_count', 1)
+        ->assertJsonPath('updated_prices.0.submitted_price', 1250);
+
+    expect($this->user->submittedPrices()->count())->toBe(1)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [['item_id' => $this->item->id, 'price' => 0]],
+    ])->assertUnprocessable()
+        ->assertJsonValidationErrors('prices.0.price');
+});
+
+it('backfills contribution counts from web history and successful legacy API logs', function () {
+    Schema::dropIfExists('user_item_price_preferences');
+    Schema::table('users', function (Blueprint $table) {
+        $table->dropColumn('price_contributions_count');
+    });
+
+    foreach ([1700, 1800] as $price) {
+        PriceHistory::create([
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => $price,
+            'created_by' => $this->user->id,
+        ]);
+    }
+
+    ApiLog::create([
+        'user_id' => $this->user->id,
+        'endpoint' => 'api/prices',
+        'method' => 'POST',
+        'response_status' => 200,
+        'items_affected' => 0,
+        'request_data' => [
+            'server_id' => $this->server->id,
+            'prices' => [
+                ['item_id' => $this->item->id, 'price' => 1800],
+                ['item_id' => $this->item->id, 'price' => 1900],
+                ['item_id' => $this->item->id, 'price' => 2000],
+            ],
+        ],
+    ]);
+
+    ApiLog::create([
+        'user_id' => $this->user->id,
+        'endpoint' => 'api/prices',
+        'method' => 'POST',
+        'response_status' => 422,
+        'items_affected' => 10,
+    ]);
+
+    Schema::dropIfExists('price_contribution_days');
+
+    $legacyMigration = require database_path('migrations/2026_07_14_000001_backfill_price_contribution_counts.php');
+    $legacyMigration->up();
+
+    $dailyMigration = require database_path('migrations/2026_07_22_000000_create_price_contribution_days_table.php');
+    $dailyMigration->up();
+    $dailyMigration->up();
+
+    expect(Schema::hasColumn('users', 'price_contributions_count'))->toBeTrue()
+        ->and(Schema::hasTable('user_item_price_preferences'))->toBeTrue()
+        ->and(Schema::hasTable('price_contribution_days'))->toBeTrue()
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+});

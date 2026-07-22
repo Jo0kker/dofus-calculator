@@ -36,4 +36,14 @@ class Server extends Model
     {
         return $this->hasMany(PriceHistory::class);
     }
+
+    public function personalItemPrices(): HasMany
+    {
+        return $this->hasMany(PersonalItemPrice::class);
+    }
+
+    public function userItemPricePreferences(): HasMany
+    {
+        return $this->hasMany(UserItemPricePreference::class);
+    }
 }

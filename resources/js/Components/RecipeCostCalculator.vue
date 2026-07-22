@@ -106,6 +106,7 @@
                                     <span :class="!includedIngredients[detail.ingredient.id] ? 'line-through text-gray-400' : ''">
                                         {{ detail.quantity }}x {{ detail.ingredient.name }}
                                     </span>
+                                    <PriceSourceTag v-if="detail.price" :source="detail.priceSource" />
                                 </span>
                                 <span :class="[
                                     detail.price ? (includedIngredients[detail.ingredient.id] ? 'text-green-600' : 'text-gray-400') : 'text-red-500',
@@ -182,6 +183,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useServerSelection } from '@/Composables/useServerSelection';
 import axios from 'axios';
 import CraftTreeNode from './CraftTreeNode.vue';
+import PriceSourceTag from './PriceSourceTag.vue';
 
 const props = defineProps({
     recipe: Object,
@@ -195,6 +197,38 @@ const optimizedCalculation = ref(null);
 const includedIngredients = ref({});
 const calculationMode = ref('optimized');
 const loadingOptimized = ref(false);
+
+const getEffectivePriceMode = item => {
+    const preference = item.price_preferences?.find(entry => entry.server_id == selectedServerId.value);
+    return preference?.mode === 'personal' ? 'personal' : 'community';
+};
+
+const resolveEffectivePrice = item => {
+    const mode = getEffectivePriceMode(item);
+    const community = item.prices?.find(p => (p.server_id ?? p.server?.id) == selectedServerId.value) || null;
+    const personal = item.personal_prices?.find(p => p.server_id == selectedServerId.value) || null;
+
+    if (mode === 'personal' && personal) {
+        return {
+            price: personal,
+            source: { type: 'personal', label: 'Perso', isFallback: false, contributor: null },
+        };
+    }
+
+    if (community) {
+        return {
+            price: community,
+            source: {
+                type: 'community',
+                label: 'HDV',
+                isFallback: mode === 'personal',
+                contributor: community.user || null,
+            },
+        };
+    }
+
+    return { price: null, source: null };
+};
 
 // Initialiser les checkboxes pour tous les ingrédients
 const initializeIngredients = () => {
@@ -224,7 +258,8 @@ const calculateCost = () => {
         const isIncluded = includedIngredients.value[ingredient.id] !== false;
         
         // Trouver le prix pour le serveur sélectionné
-        const price = ingredient.prices.find(p => p.server.id == selectedServerId.value);
+        const resolution = resolveEffectivePrice(ingredient);
+        const price = resolution.price;
         
         if (price && isIncluded) {
             const unitPrice = price.price;
@@ -233,6 +268,7 @@ const calculateCost = () => {
                 ingredient,
                 quantity,
                 price: unitPrice,
+                priceSource: resolution.source,
             });
         } else if (!price && isIncluded) {
             canCraft = false;
@@ -241,6 +277,7 @@ const calculateCost = () => {
                 ingredient,
                 quantity,
                 price: null,
+                priceSource: null,
             });
         } else {
             // Ingrédient exclu du calcul
@@ -248,6 +285,7 @@ const calculateCost = () => {
                 ingredient,
                 quantity,
                 price: price ? price.price : null,
+                priceSource: resolution.source,
             });
         }
     });

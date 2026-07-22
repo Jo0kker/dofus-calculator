@@ -2,13 +2,22 @@
 
 namespace App\Models;
 
-use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class ItemPrice extends Model
 {
+    protected $hidden = [
+        'confidence_score',
+        'confidence_level',
+        'recent_observations_count',
+        'recent_contributors_count',
+        'confidence_details',
+        'confidence_computed_at',
+        'confidence_version',
+    ];
+
     protected $fillable = [
         'server_id',
         'item_id',
@@ -16,15 +25,30 @@ class ItemPrice extends Model
         'reports_count',
         'status',
         'created_by',
+        'confidence_score',
+        'confidence_level',
+        'recent_observations_count',
+        'recent_contributors_count',
+        'confidence_details',
+        'confidence_computed_at',
+        'confidence_version',
     ];
 
     protected $casts = [
         'price' => 'integer',
         'reports_count' => 'integer',
+        'confidence_score' => 'integer',
+        'recent_observations_count' => 'integer',
+        'recent_contributors_count' => 'integer',
+        'confidence_details' => 'array',
+        'confidence_computed_at' => 'datetime',
+        'confidence_version' => 'integer',
     ];
 
     const STATUS_APPROVED = 'approved';
+
     const STATUS_PENDING_REVIEW = 'pending_review';
+
     const STATUS_REJECTED = 'rejected';
 
     const REPORT_THRESHOLD = 3;
@@ -54,22 +78,22 @@ class ItemPrice extends Model
         $existingReport = $this->reports()
             ->where('reported_by', $user->id)
             ->first();
-        
+
         if ($existingReport) {
             return false;
         }
-        
+
         $this->reports()->create([
             'reported_by' => $user->id,
             'reason' => $reason,
         ]);
-        
+
         $this->increment('reports_count');
-        
+
         if ($this->reports_count >= self::REPORT_THRESHOLD) {
             $this->update(['status' => self::STATUS_PENDING_REVIEW]);
         }
-        
+
         return true;
     }
 
@@ -79,7 +103,7 @@ class ItemPrice extends Model
             'status' => self::STATUS_APPROVED,
             'reports_count' => 0,
         ]);
-        
+
         $this->reports()->delete();
     }
 

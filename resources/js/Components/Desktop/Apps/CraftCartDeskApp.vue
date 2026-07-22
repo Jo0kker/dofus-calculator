@@ -1,6 +1,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import DesktopAppShell from '@/Components/Desktop/Apps/DesktopAppShell.vue';
+import PriceSourceTag from '@/Components/PriceSourceTag.vue';
 
 const props = defineProps({ payload: { type: Object, default: () => ({}) } });
 const emit = defineEmits(['open-app']);
@@ -35,6 +36,7 @@ const mergeResources = (resources = []) => {
             unitPrice,
             total: unitPrice !== null ? unitPrice * quantity : null,
             ingredient: resource.ingredient || resource,
+            priceSource: resource.priceSource || null,
         });
     });
 };
@@ -90,6 +92,7 @@ const copyList = async () => {
                         <span v-if="entry.unitPrice !== null">{{ formatNumber(entry.unitPrice) }} K/u</span>
                         <span v-else>prix manquant</span>
                     </p>
+                    <PriceSourceTag v-if="entry.unitPrice !== null" :source="entry.priceSource" class="mt-1" />
                 </div>
                 <strong class="text-xs text-[#0b3f88]">{{ entry.total !== null ? `${formatNumber(entry.total)} K` : '—' }}</strong>
                 <button class="desk-button" type="button" @click="emit('open-app', 'itemInspector', { windowId: `item-${entry.id}`, title: entry.name, itemId: entry.id })">Voir</button>

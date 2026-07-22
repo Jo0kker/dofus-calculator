@@ -4,27 +4,28 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Models\Item;
-use App\Models\ItemPrice;
+use App\Services\PriceSubmissionService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class PriceApiController extends Controller
 {
+    public function __construct(private readonly PriceSubmissionService $priceSubmissionService) {}
+
     /**
      * Update item prices
      *
      * Updates prices for one or multiple items. Requires 'write' permission.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function store(Request $request)
     {
         $request->validate([
             'server_id' => 'required|exists:servers,id',
-            'prices' => 'required|array',
+            'prices' => 'required|array|min:1|max:500',
             'prices.*.item_id' => 'required|exists:items,id',
-            'prices.*.price' => 'required|integer|min:0',
+            'prices.*.price' => 'required|integer|min:1|max:999999999',
         ]);
 
         $serverId = $request->input('server_id');
@@ -32,25 +33,22 @@ class PriceApiController extends Controller
 
         DB::beginTransaction();
         try {
-            foreach ($request->prices as $priceData) {
+            $prices = collect($request->prices)->keyBy('item_id')->values();
+            foreach ($prices as $priceData) {
                 $item = Item::find($priceData['item_id']);
 
-                $price = ItemPrice::updateOrCreate(
-                    [
-                        'item_id' => $item->id,
-                        'server_id' => $serverId,
-                    ],
-                    [
-                        'price' => $priceData['price'],
-                        'created_by' => $request->user()->id,
-                        'status' => 'approved', // API prices are auto-approved like web prices
-                    ]
+                $price = $this->priceSubmissionService->submitCommunityPrice(
+                    $request->user(),
+                    $item->id,
+                    $serverId,
+                    $priceData['price'],
                 );
 
                 $updatedPrices[] = [
                     'item_id' => $item->id,
                     'item_name' => $item->name,
                     'server_id' => $serverId,
+                    'submitted_price' => $priceData['price'],
                     'price' => $price->price,
                     'status' => $price->status,
                 ];
@@ -66,9 +64,10 @@ class PriceApiController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'message' => 'Error updating prices',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }
@@ -78,16 +77,15 @@ class PriceApiController extends Controller
      *
      * Updates prices for multiple items using their names. Requires 'write' permission.
      *
-     * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function bulkUpdate(Request $request)
     {
         $request->validate([
             'server_id' => 'required|exists:servers,id',
-            'prices' => 'required|array',
+            'prices' => 'required|array|min:1|max:500',
             'prices.*.item_name' => 'required|string',
-            'prices.*.price' => 'required|integer|min:0',
+            'prices.*.price' => 'required|integer|min:1|max:999999999',
         ]);
 
         $serverId = $request->input('server_id');
@@ -96,30 +94,38 @@ class PriceApiController extends Controller
 
         DB::beginTransaction();
         try {
+            $resolvedPrices = [];
             foreach ($request->prices as $priceData) {
-                $item = Item::where('name', 'like', $priceData['item_name'])->first();
+                $itemName = trim($priceData['item_name']);
+                $item = Item::whereRaw('LOWER(name) = LOWER(?)', [$itemName])->first();
 
-                if (!$item) {
-                    $notFound[] = $priceData['item_name'];
+                if (! $item) {
+                    $notFound[] = $itemName;
+
                     continue;
                 }
 
-                $price = ItemPrice::updateOrCreate(
-                    [
-                        'item_id' => $item->id,
-                        'server_id' => $serverId,
-                    ],
-                    [
-                        'price' => $priceData['price'],
-                        'created_by' => $request->user()->id,
-                        'status' => 'approved', // API prices are auto-approved like web prices
-                    ]
+                $resolvedPrices[$item->id] = [
+                    'item' => $item,
+                    'price' => $priceData['price'],
+                ];
+            }
+
+            foreach ($resolvedPrices as $resolvedPrice) {
+                $item = $resolvedPrice['item'];
+
+                $price = $this->priceSubmissionService->submitCommunityPrice(
+                    $request->user(),
+                    $item->id,
+                    $serverId,
+                    $resolvedPrice['price'],
                 );
 
                 $updatedPrices[] = [
                     'item_id' => $item->id,
                     'item_name' => $item->name,
                     'server_id' => $serverId,
+                    'submitted_price' => $resolvedPrice['price'],
                     'price' => $price->price,
                     'status' => $price->status,
                 ];
@@ -137,9 +143,10 @@ class PriceApiController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
+
             return response()->json([
                 'message' => 'Error updating prices',
-                'error' => $e->getMessage()
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

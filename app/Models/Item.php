@@ -3,9 +3,9 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 
 class Item extends Model
 {
@@ -47,11 +47,62 @@ class Item extends Model
         return $this->hasMany(PriceHistory::class);
     }
 
-    public function getPriceForServer(Server $server): ?ItemPrice
+    public function personalPrices(): HasMany
     {
+        return $this->hasMany(PersonalItemPrice::class);
+    }
+
+    public function pricePreferences(): HasMany
+    {
+        return $this->hasMany(UserItemPricePreference::class);
+    }
+
+    public function getPriceModeForServer(Server $server, ?User $user = null): string
+    {
+        if (! $user) {
+            return 'community';
+        }
+
+        $preference = $this->relationLoaded('pricePreferences')
+            ? $this->pricePreferences
+                ->where('user_id', $user->id)
+                ->firstWhere('server_id', $server->id)
+            : $this->pricePreferences()
+                ->where('user_id', $user->id)
+                ->where('server_id', $server->id)
+                ->first();
+
+        return $preference?->mode === 'personal' ? 'personal' : 'community';
+    }
+
+    public function getPriceForServer(Server $server, ?User $user = null): ItemPrice|PersonalItemPrice|null
+    {
+        if ($this->getPriceModeForServer($server, $user) === 'personal') {
+            $personalPrice = $this->relationLoaded('personalPrices')
+                ? $this->personalPrices
+                    ->where('user_id', $user->id)
+                    ->firstWhere('server_id', $server->id)
+                : $this->personalPrices()
+                    ->where('user_id', $user->id)
+                    ->where('server_id', $server->id)
+                    ->first();
+
+            if ($personalPrice) {
+                return $personalPrice;
+            }
+        }
+
+        if ($this->relationLoaded('prices')) {
+            return $this->prices
+                ->where('server_id', $server->id)
+                ->where('status', ItemPrice::STATUS_APPROVED)
+                ->sortByDesc('updated_at')
+                ->first();
+        }
+
         return $this->prices()
             ->where('server_id', $server->id)
-            ->where('status', 'approved')
+            ->where('status', ItemPrice::STATUS_APPROVED)
             ->orderBy('updated_at', 'desc')
             ->first();
     }

@@ -50,6 +50,7 @@ class DesktopItemController extends Controller
     {
         $this->ensureDesktopMode($request);
 
+        $userId = $request->user()->id;
         $selectedServerId = session('selected_server_id');
         if ($request->user()?->server_id) {
             $selectedServerId = $request->user()->server_id;
@@ -60,13 +61,36 @@ class DesktopItemController extends Controller
             if ($selectedServerId) {
                 $query->where('server_id', $selectedServerId);
             }
-            $query->orderBy('updated_at', 'desc')->with('server');
+            $query->orderBy('updated_at', 'desc')->with([
+                'server',
+                'user:id,name,price_contributions_count',
+            ]);
+        };
+
+        $personalPricesForUser = function ($query) use ($userId, $selectedServerId) {
+            $query->where('user_id', $userId);
+            if ($selectedServerId) {
+                $query->where('server_id', $selectedServerId);
+            }
+        };
+
+        $preferencesForUser = function ($query) use ($userId, $selectedServerId) {
+            $query->where('user_id', $userId);
+            if ($selectedServerId) {
+                $query->where('server_id', $selectedServerId);
+            }
         };
 
         $item->load([
             'recipe.ingredients.prices' => $approvedPricesForServer,
+            'recipe.ingredients.personalPrices' => $personalPricesForUser,
+            'recipe.ingredients.pricePreferences' => $preferencesForUser,
             'recipe.ingredients.recipe.ingredients.prices' => $approvedPricesForServer,
+            'recipe.ingredients.recipe.ingredients.personalPrices' => $personalPricesForUser,
+            'recipe.ingredients.recipe.ingredients.pricePreferences' => $preferencesForUser,
             'prices' => $approvedPricesForServer,
+            'personalPrices' => $personalPricesForUser,
+            'pricePreferences' => $preferencesForUser,
         ]);
 
         $usedInRecipes = Recipe::query()
@@ -80,12 +104,14 @@ class DesktopItemController extends Controller
                 ...$this->itemSummary($item),
                 'metadata' => $item->metadata ?? [],
                 'prices' => $item->prices->map(fn ($price) => $this->priceSummary($price))->values(),
+                'personal_prices' => $item->personalPrices->map(fn ($price) => $this->personalPriceSummary($price))->values(),
+                'price_preferences' => $item->pricePreferences->map(fn ($preference) => $this->pricePreferenceSummary($preference))->values(),
                 'recipe' => $this->recipePayload($item->recipe),
                 'used_in_recipes' => $usedInRecipes->map(fn (Recipe $recipe) => $this->itemSummary($recipe->item))->values(),
+                'is_favorite' => $request->user()->isFavorite($item),
             ],
         ]);
     }
-
 
     private function recipePayload(?Recipe $recipe, int $depth = 0): ?array
     {
@@ -103,6 +129,8 @@ class DesktopItemController extends Controller
                 'pivot' => ['quantity' => $ingredient->pivot->quantity],
                 'quantity' => $ingredient->pivot->quantity,
                 'prices' => $ingredient->prices->map(fn ($price) => $this->priceSummary($price))->values(),
+                'personal_prices' => $ingredient->personalPrices->map(fn ($price) => $this->personalPriceSummary($price))->values(),
+                'price_preferences' => $ingredient->pricePreferences->map(fn ($preference) => $this->pricePreferenceSummary($preference))->values(),
                 'recipe' => $depth < 2 && $ingredient->relationLoaded('recipe')
                     ? $this->recipePayload($ingredient->recipe, $depth + 1)
                     : null,
@@ -122,6 +150,28 @@ class DesktopItemController extends Controller
                 'name' => $price->server->name,
             ] : null,
             'updated_at' => $price->updated_at?->toISOString(),
+            'user' => $price->user ? [
+                'name' => $price->user->name,
+                'price_contributions_count' => $price->user->price_contributions_count,
+            ] : null,
+        ];
+    }
+
+    private function personalPriceSummary($price): array
+    {
+        return [
+            'id' => $price->id,
+            'price' => $price->price,
+            'server_id' => $price->server_id,
+            'updated_at' => $price->updated_at?->toISOString(),
+        ];
+    }
+
+    private function pricePreferenceSummary($preference): array
+    {
+        return [
+            'server_id' => $preference->server_id,
+            'mode' => $preference->mode,
         ];
     }
 
