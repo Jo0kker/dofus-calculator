@@ -4,34 +4,48 @@ namespace App\Http\Controllers\Desktop;
 
 use App\Http\Controllers\Controller;
 use App\Models\Item;
+use App\Models\Server;
+use App\Services\FavoriteAnalysisService;
 use Illuminate\Http\Request;
 
 class DesktopFavoriteController extends Controller
 {
+    public function __construct(private readonly FavoriteAnalysisService $favoriteAnalysisService) {}
+
     public function index(Request $request)
     {
         $this->ensureDesktopMode($request);
 
-        $favorites = $request->user()
-            ->favoriteItems()
-            ->withCount('recipe')
-            ->orderByPivot('created_at', 'desc')
-            ->get()
-            ->map(fn (Item $item) => [
-                'id' => $item->id,
-                'name' => $item->name,
-                'type' => $item->type,
-                'category' => $item->category,
-                'level' => $item->level,
-                'image_url' => $item->image_url,
-                'is_craftable' => $item->recipe_count > 0,
-                'favorited_at' => $item->pivot?->created_at?->toISOString(),
-            ])
+        $user = $request->user();
+        $serverId = $user->server_id ?: session('selected_server_id');
+        $server = Server::find($serverId);
+        $favorites = $this->favoriteAnalysisService
+            ->forUser($user, $server, includeCraftTree: false)
+            ->map(function (array $analysis) {
+                $item = $analysis['item'];
+
+                return [
+                    'id' => $item->id,
+                    'name' => $item->name,
+                    'type' => $item->type,
+                    'category' => $item->category,
+                    'level' => $item->level,
+                    'image_url' => $item->image_url,
+                    'is_craftable' => $item->recipe !== null,
+                    'profession' => $item->recipe?->profession,
+                    'favorited_at' => $item->pivot?->created_at?->toISOString(),
+                    'direct_price' => $analysis['direct_price'],
+                    'craft_cost' => $analysis['craft_cost'],
+                    'best_option' => $analysis['best_option'],
+                    'savings' => $analysis['savings'],
+                ];
+            })
             ->values();
 
         return response()->json([
             'favorites' => $favorites,
             'types' => $favorites->pluck('type')->filter()->unique()->sort()->values(),
+            'professions' => $favorites->pluck('profession')->filter()->unique()->sort()->values(),
         ]);
     }
 

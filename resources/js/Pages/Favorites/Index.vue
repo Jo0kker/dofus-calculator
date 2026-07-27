@@ -45,12 +45,19 @@
                                 </div>
                             </div>
 
-                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:w-[30rem]">
+                            <div class="grid grid-cols-1 gap-3 sm:grid-cols-3 lg:w-[45rem]">
                                 <div>
                                     <label for="favorite-type" class="mb-1.5 block text-sm font-medium text-gray-700">Type</label>
                                     <select id="favorite-type" v-model="selectedType" class="w-full rounded-lg border-gray-300 py-2.5 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                         <option value="">Tous les types</option>
                                         <option v-for="type in availableTypes" :key="type" :value="type">{{ type }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="favorite-profession" class="mb-1.5 block text-sm font-medium text-gray-700">Métier</label>
+                                    <select id="favorite-profession" v-model="selectedProfession" class="w-full rounded-lg border-gray-300 py-2.5 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                        <option value="">Tous les métiers</option>
+                                        <option v-for="profession in availableProfessions" :key="profession" :value="profession">{{ profession }}</option>
                                     </select>
                                 </div>
                                 <div>
@@ -106,26 +113,26 @@
                         <div class="p-6">
                             <!-- Item Header -->
                             <div class="mb-4 flex flex-col items-start gap-4 sm:flex-row sm:justify-between">
-                                <div class="flex items-center space-x-4">
-                                    <button type="button" @click="openItemDetails(favorite.item)">
-                                        <img 
-                                            v-if="favorite.item.image_url" 
-                                            :src="favorite.item.image_url" 
-                                            :alt="favorite.item.name"
-                                            class="w-16 h-16 object-contain hover:opacity-80 transition-opacity"
-                                        />
-                                    </button>
+                                <a
+                                    :href="route('items.show', favorite.item.id)"
+                                    class="flex items-center space-x-4"
+                                    @click="openItemDetails($event, favorite.item)"
+                                >
+                                    <img
+                                        v-if="favorite.item.image_url"
+                                        :src="favorite.item.image_url"
+                                        :alt="favorite.item.name"
+                                        class="w-16 h-16 object-contain hover:opacity-80 transition-opacity"
+                                    />
                                     <div>
-                                        <h2 class="text-xl font-bold text-gray-900">
-                                            <button type="button" class="hover:text-blue-600 transition-colors" @click="openItemDetails(favorite.item)">
-                                                {{ favorite.item.name }}
-                                            </button>
+                                        <h2 class="text-xl font-bold text-gray-900 transition-colors hover:text-blue-600">
+                                            {{ favorite.item.name }}
                                         </h2>
                                         <p v-if="favorite.item.level" class="text-sm text-gray-500">
                                             Niveau {{ favorite.item.level }}
                                         </p>
                                     </div>
-                                </div>
+                                </a>
                                 
                                 <!-- Best Option Badge -->
                                 <div class="flex w-full shrink-0 items-start justify-between gap-3 text-right sm:w-auto sm:justify-start sm:pl-3">
@@ -260,6 +267,7 @@ const { selectedServer } = useServerSelection();
 const { isDesktopFrame, openDesktopWindow } = useDesktopBridge();
 const search = ref('');
 const selectedType = ref('');
+const selectedProfession = ref('');
 const bestOptionFilter = ref('all');
 const sortBy = ref('recent');
 const removingIds = reactive(new Set());
@@ -267,6 +275,12 @@ const removingIds = reactive(new Set());
 const availableTypes = computed(() => [...new Set(
     props.favorites
         .map((favorite) => favorite.item.type)
+        .filter(Boolean),
+)].sort((a, b) => a.localeCompare(b, 'fr')));
+
+const availableProfessions = computed(() => [...new Set(
+    props.favorites
+        .map((favorite) => favorite.item.recipe?.profession)
         .filter(Boolean),
 )].sort((a, b) => a.localeCompare(b, 'fr')));
 
@@ -281,13 +295,14 @@ const filteredFavorites = computed(() => {
     const query = search.value.trim().toLocaleLowerCase('fr');
     const favorites = props.favorites.filter((favorite) => {
         const item = favorite.item;
-        const matchesSearch = !query || [item.name, item.type, item.category]
+        const matchesSearch = !query || [item.name, item.type, item.category, item.recipe?.profession]
             .filter(Boolean)
             .some((value) => value.toLocaleLowerCase('fr').includes(query));
         const matchesType = !selectedType.value || item.type === selectedType.value;
+        const matchesProfession = !selectedProfession.value || item.recipe?.profession === selectedProfession.value;
         const matchesOption = bestOptionFilter.value === 'all' || favorite.best_option === bestOptionFilter.value;
 
-        return matchesSearch && matchesType && matchesOption;
+        return matchesSearch && matchesType && matchesProfession && matchesOption;
     });
 
     return favorites.sort((left, right) => {
@@ -309,6 +324,7 @@ const filteredFavorites = computed(() => {
 
 const hasActiveFilters = computed(() => search.value !== ''
     || selectedType.value !== ''
+    || selectedProfession.value !== ''
     || bestOptionFilter.value !== 'all'
     || sortBy.value !== 'recent');
 
@@ -320,6 +336,7 @@ const resultLabel = computed(() => {
 const resetFilters = () => {
     search.value = '';
     selectedType.value = '';
+    selectedProfession.value = '';
     bestOptionFilter.value = 'all';
     sortBy.value = 'recent';
 };
@@ -332,7 +349,13 @@ const removeFavorite = (item) => {
     });
 };
 
-const openItemDetails = (item) => {
+const openItemDetails = (event, item) => {
+    if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) {
+        return;
+    }
+
+    event.preventDefault();
+
     const itemUrl = route('items.show', item.id);
 
     if (isDesktopFrame.value && openDesktopWindow({

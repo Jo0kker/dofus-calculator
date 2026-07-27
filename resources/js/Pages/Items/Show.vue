@@ -167,12 +167,19 @@
                                                                 </div>
                                                             </div>
                                                         </div>
-                                                        <Link 
-                                                            :href="route('items.show', ingredient.id)"
-                                                            class="text-xs text-blue-600 hover:text-blue-800"
-                                                        >
-                                                            Voir détails →
-                                                        </Link>
+                                                        <div class="flex items-center gap-2">
+                                                            <FavoriteToggleButton
+                                                                :item-id="ingredient.id"
+                                                                :item-name="ingredient.name"
+                                                                :initial-favorite="favoriteItemIds.includes(ingredient.id)"
+                                                            />
+                                                            <Link
+                                                                :href="route('items.show', ingredient.id)"
+                                                                class="text-xs text-blue-600 hover:text-blue-800"
+                                                            >
+                                                                Voir détails →
+                                                            </Link>
+                                                        </div>
                                                     </div>
                                                     
                                                     <!-- Prix de l'ingrédient -->
@@ -193,9 +200,10 @@
                                         
                                         <!-- Calculateur de ressources -->
                                         <div class="mt-6">
-                                            <ResourcesCalculator 
+                                            <ResourcesCalculator
                                                 :recipe="item.recipe"
                                                 :item-name="item.name"
+                                                :favorite-item-ids="favoriteItemIds"
                                             />
                                         </div>
                                     </div>
@@ -298,11 +306,16 @@ import IngredientPricing from '@/Components/IngredientPricing.vue';
 import RecipeCostCalculator from '@/Components/RecipeCostCalculator.vue';
 import PriceHistory from '@/Components/PriceHistory.vue';
 import ResourcesCalculator from '@/Components/ResourcesCalculator.vue';
+import FavoriteToggleButton from '@/Components/FavoriteToggleButton.vue';
 
 const props = defineProps({
     item: Object,
     usedInRecipes: Array,
     isFavorite: Boolean,
+    favoriteItemIds: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const page = usePage();

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Item;
 use App\Models\ItemPrice;
 use App\Models\PersonalItemPrice;
+use App\Models\Recipe;
 use App\Models\Server;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -24,6 +25,11 @@ class ItemController extends Controller
             $query->where('type', $request->type);
         }
 
+        if ($request->filled('profession')) {
+            $query->whereHas('recipe', fn ($recipeQuery) => $recipeQuery
+                ->where('profession', $request->profession));
+        }
+
         if ($request->filled('min_level')) {
             $query->where('level', '>=', $request->min_level);
         }
@@ -35,11 +41,18 @@ class ItemController extends Controller
         $items = $query->paginate(20);
 
         $types = Item::distinct()->pluck('type')->filter();
+        $professions = Recipe::query()
+            ->whereNotNull('profession')
+            ->distinct()
+            ->orderBy('profession')
+            ->pluck('profession');
 
         return Inertia::render('Items/Index', [
             'items' => $items,
-            'filters' => $request->only(['search', 'type', 'min_level', 'max_level']),
+            'filters' => $request->only(['search', 'type', 'profession', 'min_level', 'max_level']),
             'types' => $types,
+            'professions' => $professions,
+            'favoriteItemIds' => $this->favoriteItemIds($request),
         ]);
     }
 
@@ -138,8 +151,22 @@ class ItemController extends Controller
             'item' => $item,
             'usedInRecipes' => $usedInRecipes,
             'isFavorite' => $isFavorite,
+            'favoriteItemIds' => $this->favoriteItemIds($request),
             'selectedServerId' => $selectedServerId,
         ]);
+    }
+
+    private function favoriteItemIds(Request $request): array
+    {
+        if (! $request->user()) {
+            return [];
+        }
+
+        return $request->user()
+            ->favoriteItems()
+            ->pluck('items.id')
+            ->map(fn ($itemId) => (int) $itemId)
+            ->all();
     }
 
     public function calculateRecursiveCost(Item $item, Request $request)

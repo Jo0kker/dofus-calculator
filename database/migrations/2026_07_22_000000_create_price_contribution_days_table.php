@@ -40,14 +40,18 @@ return new class extends Migration
             ->orderBy('id')
             ->chunkById(500, function ($histories) {
                 $now = now();
-                $rows = $histories->map(fn ($history) => [
-                    'user_id' => $history->created_by,
-                    'server_id' => $history->server_id,
-                    'item_id' => $history->item_id,
-                    'contribution_date' => Carbon::parse($history->created_at ?? $now)->toDateString(),
-                    'created_at' => $now,
-                    'updated_at' => $now,
-                ])->all();
+                $rows = $histories->map(function ($history) use ($now) {
+                    $createdAt = Carbon::parse($history->created_at ?? $now);
+
+                    return [
+                        'user_id' => $history->created_by,
+                        'server_id' => $history->server_id,
+                        'item_id' => $history->item_id,
+                        'contribution_date' => $createdAt->toDateString(),
+                        'created_at' => $createdAt,
+                        'updated_at' => $createdAt,
+                    ];
+                })->all();
 
                 if ($rows !== []) {
                     DB::table('price_contribution_days')->insertOrIgnore($rows);
@@ -82,7 +86,8 @@ return new class extends Migration
                         continue;
                     }
 
-                    $date = Carbon::parse($log->created_at ?? now())->toDateString();
+                    $createdAt = Carbon::parse($log->created_at ?? now());
+                    $date = $createdAt->toDateString();
                     $seenUnresolved = [];
 
                     foreach ($prices as $priceData) {
@@ -101,8 +106,8 @@ return new class extends Migration
                             'server_id' => $serverId,
                             'item_id' => $itemId,
                             'contribution_date' => $date,
-                            'created_at' => now(),
-                            'updated_at' => now(),
+                            'created_at' => $createdAt,
+                            'updated_at' => $createdAt,
                         ]);
                     }
 

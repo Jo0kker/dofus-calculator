@@ -6,9 +6,14 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Item extends Model
 {
+    use SoftDeletes;
+
+    protected $hidden = ['deleted_at'];
+
     protected $fillable = [
         'dofusdb_id',
         'name',
