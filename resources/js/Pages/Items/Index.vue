@@ -14,8 +14,8 @@
                 <!-- Search and Filters -->
                 <div class="bg-white overflow-hidden shadow-xl sm:rounded-lg p-6 mb-6">
                     <h2 class="text-lg font-semibold mb-4">Recherche et filtres</h2>
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                        <div class="md:col-span-2">
+                    <div class="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-6">
+                        <div class="md:col-span-2 lg:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Rechercher</label>
                             <input 
                                 type="text" 
@@ -41,6 +41,20 @@
                         </div>
                         
                         <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Métier</label>
+                            <select
+                                v-model="filters.profession"
+                                @change="applyFilters"
+                                class="w-full border-gray-300 rounded-md shadow-sm"
+                            >
+                                <option value="">Tous les métiers</option>
+                                <option v-for="profession in professions" :key="profession" :value="profession">
+                                    {{ profession }}
+                                </option>
+                            </select>
+                        </div>
+
+                        <div class="md:col-span-2 lg:col-span-2">
                             <label class="block text-sm font-medium text-gray-700 mb-1">Niveau</label>
                             <div class="flex space-x-2">
                                 <input 
@@ -73,9 +87,15 @@
                             <div 
                                 v-for="item in items.data" 
                                 :key="item.id"
-                                class="border rounded-lg p-4 hover:shadow-lg transition-shadow cursor-pointer"
+                                class="relative border rounded-lg p-4 pr-14 hover:shadow-lg transition-shadow cursor-pointer"
                                 @click="viewItem(item)"
                             >
+                                <FavoriteToggleButton
+                                    class="absolute right-3 top-3"
+                                    :item-id="item.id"
+                                    :item-name="item.name"
+                                    :initial-favorite="favoriteItemIds.includes(item.id)"
+                                />
                                 <div class="flex items-start space-x-3">
                                     <img 
                                         v-if="item.image_url" 
@@ -175,17 +195,24 @@ import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { Link, Head } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import FavoriteToggleButton from '@/Components/FavoriteToggleButton.vue';
 import { useDesktopBridge } from '@/Composables/useDesktopBridge';
 
 const props = defineProps({
     items: Object,
     filters: Object,
     types: Array,
+    professions: Array,
+    favoriteItemIds: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const filters = ref({
     search: props.filters?.search || '',
     type: props.filters?.type || '',
+    profession: props.filters?.profession || '',
     min_level: props.filters?.min_level || '',
     max_level: props.filters?.max_level || '',
 });

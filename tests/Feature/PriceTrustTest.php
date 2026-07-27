@@ -74,7 +74,7 @@ it('counts repeated observations but gives one contributor only one influence', 
         ->and(PriceHistory::count())->toBe(2);
 });
 
-it('selects the latest observation per contributor before handling a noisy history', function () {
+it('publishes the latest valid observation even when the history is noisy', function () {
     $honestUsers = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
     $attacker = User::factory()->create(['created_at' => now()->subYear()]);
 
@@ -103,10 +103,10 @@ it('selects the latest observation per contributor before handling a noisy histo
     $price = $this->trustService->recalculate($this->item->id, $this->server->id);
 
     expect($price->recent_contributors_count)->toBe(4)
-        ->and($price->price)->toBeLessThan(2000);
+        ->and($price->price)->toBe(100501);
 });
 
-it('keeps an implausible outlier from dominating the community consensus', function () {
+it('publishes the latest price even when its trust score is low', function () {
     $users = User::factory()->count(3)->create(['created_at' => now()->subYear()]);
 
     $this->submissionService->submitCommunityPrice($users[0], $this->item->id, $this->server->id, 1000);
@@ -115,7 +115,7 @@ it('keeps an implausible outlier from dominating the community consensus', funct
 
     $outlier = PriceHistory::query()->where('created_by', $users[2]->id)->first();
 
-    expect($price->price)->toBeLessThan(2000)
+    expect($price->price)->toBe(100000)
         ->and($price->recent_contributors_count)->toBe(3)
         ->and($outlier->plausibility_score)->toBeLessThanOrEqual(5)
         ->and($price->confidence_details['reason_codes'])->toContain('high_dispersion');

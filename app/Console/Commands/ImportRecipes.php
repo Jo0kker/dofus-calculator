@@ -43,22 +43,30 @@ class ImportRecipes extends Command
             $this->info("Importing up to $limit recipes with their items and ingredients...");
         } else {
             $limit = PHP_INT_MAX; // Import toutes les recettes disponibles
-            $this->info("Importing ALL available recipes with their items and ingredients...");
+            $this->info('Importing ALL available recipes with their items and ingredients...');
         }
 
         $this->info("Chunk size: $chunkSize (memory cleared every $chunkSize recipes)");
 
-        $result = $importService->importRecipesFirst($limit, $chunkSize, function($processed, $memoryUsage) {
+        $result = $importService->importRecipesFirst($limit, $chunkSize, function ($processed, $memoryUsage) {
             $this->line("  → Processed $processed recipes | Memory: {$memoryUsage}MB");
         });
 
         $this->newLine();
-        $this->info("Import completed!");
+        $this->info('Import completed!');
         $this->info("- Recipes imported: {$result['imported']}");
         $this->info("- Recipes updated: {$result['updated']}");
+        $this->info("- Stale recipes deleted: {$result['deleted']}");
+        $this->info("- Stale items deleted: {$result['deleted_items']}");
+        $this->info('- Recipe cleanup performed: '.($result['cleanup_performed'] ? 'yes' : 'no'));
+        $this->info('- Item cleanup performed: '.($result['item_cleanup_performed'] ? 'yes' : 'no'));
 
-        if (!empty($result['errors'])) {
-            $this->warn('Errors encountered: ' . count($result['errors']));
+        if (! empty($result['unknown_job_ids'])) {
+            $this->warn('- Unknown DofusDB job IDs: '.implode(', ', $result['unknown_job_ids']));
+        }
+
+        if (! empty($result['errors'])) {
+            $this->warn('Errors encountered: '.count($result['errors']));
             if ($this->getOutput()->isVerbose()) {
                 foreach ($result['errors'] as $error) {
                     $this->error("  - $error");

@@ -37,12 +37,13 @@ class PriceApiController extends Controller
             foreach ($prices as $priceData) {
                 $item = Item::find($priceData['item_id']);
 
-                $price = $this->priceSubmissionService->submitCommunityPrice(
+                $result = $this->priceSubmissionService->submitCommunityPriceWithResult(
                     $request->user(),
                     $item->id,
                     $serverId,
                     $priceData['price'],
                 );
+                $price = $result['price'];
 
                 $updatedPrices[] = [
                     'item_id' => $item->id,
@@ -51,6 +52,7 @@ class PriceApiController extends Controller
                     'submitted_price' => $priceData['price'],
                     'price' => $price->price,
                     'status' => $price->status,
+                    'recorded' => $result['recorded'],
                 ];
             }
 
@@ -60,6 +62,8 @@ class PriceApiController extends Controller
                 'message' => 'Prices updated successfully',
                 'server_id' => $serverId,
                 'updated_count' => count($updatedPrices),
+                'recorded_count' => collect($updatedPrices)->where('recorded', true)->count(),
+                'ignored_count' => collect($updatedPrices)->where('recorded', false)->count(),
                 'updated_prices' => $updatedPrices,
             ]);
         } catch (\Exception $e) {
@@ -114,12 +118,13 @@ class PriceApiController extends Controller
             foreach ($resolvedPrices as $resolvedPrice) {
                 $item = $resolvedPrice['item'];
 
-                $price = $this->priceSubmissionService->submitCommunityPrice(
+                $result = $this->priceSubmissionService->submitCommunityPriceWithResult(
                     $request->user(),
                     $item->id,
                     $serverId,
                     $resolvedPrice['price'],
                 );
+                $price = $result['price'];
 
                 $updatedPrices[] = [
                     'item_id' => $item->id,
@@ -128,6 +133,7 @@ class PriceApiController extends Controller
                     'submitted_price' => $resolvedPrice['price'],
                     'price' => $price->price,
                     'status' => $price->status,
+                    'recorded' => $result['recorded'],
                 ];
             }
 
@@ -137,6 +143,8 @@ class PriceApiController extends Controller
                 'message' => 'Prices updated successfully',
                 'server_id' => $serverId,
                 'updated_count' => count($updatedPrices),
+                'recorded_count' => collect($updatedPrices)->where('recorded', true)->count(),
+                'ignored_count' => collect($updatedPrices)->where('recorded', false)->count(),
                 'not_found_count' => count($notFound),
                 'updated_prices' => $updatedPrices,
                 'not_found_items' => $notFound,

@@ -74,6 +74,80 @@ it('keeps every observation but counts the same item only once per day', functio
         ->and($this->user->fresh()->price_contributions_count)->toBe(1);
 });
 
+it('ignores a consecutive identical community observation from the same contributor', function () {
+    $this->actingAs($this->user);
+
+    foreach (range(1, 2) as $attempt) {
+        $response = $this->post(route('prices.store'), [
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => 1000,
+            'price_mode' => 'community',
+        ])->assertSessionHasNoErrors();
+    }
+
+    $response->assertSessionHas(
+        'success',
+        'Prix identique à votre dernier relevé : aucun doublon créé.',
+    );
+
+    expect(PriceHistory::where('created_by', $this->user->id)->count())->toBe(1)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+});
+
+it('keeps an identical price submitted by another contributor as independent evidence', function () {
+    $otherUser = User::factory()->create(['server_id' => $this->server->id]);
+
+    foreach ([$this->user, $otherUser] as $user) {
+        $this->actingAs($user)
+            ->post(route('prices.store'), [
+                'server_id' => $this->server->id,
+                'item_id' => $this->item->id,
+                'price' => 1000,
+                'price_mode' => 'community',
+            ])
+            ->assertSessionHasNoErrors();
+    }
+
+    expect(PriceHistory::count())->toBe(2)
+        ->and(ItemPrice::first()->recent_contributors_count)->toBe(2)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(1)
+        ->and($otherUser->fresh()->price_contributions_count)->toBe(1);
+});
+
+it('requires 24 elapsed hours before counting another contribution for an item', function () {
+    $this->travelTo(now()->startOfDay()->addHours(23));
+    $this->actingAs($this->user);
+
+    $this->post(route('prices.store'), [
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'price_mode' => 'community',
+    ])->assertSessionHasNoErrors();
+
+    $this->travel(2)->hours();
+    $this->post(route('prices.store'), [
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1100,
+        'price_mode' => 'community',
+    ])->assertSessionHasNoErrors();
+
+    expect($this->user->fresh()->price_contributions_count)->toBe(1);
+
+    $this->travel(22)->hours();
+    $this->post(route('prices.store'), [
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1200,
+        'price_mode' => 'community',
+    ])->assertSessionHasNoErrors();
+
+    expect(PriceHistory::count())->toBe(3)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(2);
+});
+
 it('counts a new contribution for the same item on another day', function () {
     $this->actingAs($this->user);
 

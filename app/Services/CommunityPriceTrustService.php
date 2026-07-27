@@ -81,7 +81,7 @@ class CommunityPriceTrustService
                 'server_id' => $serverId,
             ],
             [
-                'price' => $analysis['price'],
+                'price' => $latestObservation->price,
                 'created_by' => $latestObservation->created_by,
                 'status' => $moderationLockedStatus ?? ItemPrice::STATUS_APPROVED,
                 'confidence_score' => $analysis['confidence_score'],

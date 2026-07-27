@@ -16,9 +16,10 @@ class ImportRecipesJob implements ShouldQueue
     use Queueable;
 
     public int $timeout = 3600; // 1 hour max
+
     public int $tries = 1;
 
-    private const MAX_RECIPES_DEFAULT = 10000;
+    private const MAX_RECIPES_DEFAULT = PHP_INT_MAX;
 
     public function __construct(
         private ?string $triggeredBy = null,
@@ -65,6 +66,11 @@ class ImportRecipesJob implements ShouldQueue
             Log::info('ImportRecipesJob completed', [
                 'imported' => $result['imported'],
                 'updated' => $result['updated'],
+                'deleted' => $result['deleted'] ?? 0,
+                'deleted_items' => $result['deleted_items'] ?? 0,
+                'cleanup_performed' => $result['cleanup_performed'] ?? false,
+                'item_cleanup_performed' => $result['item_cleanup_performed'] ?? false,
+                'unknown_job_ids' => $result['unknown_job_ids'] ?? [],
                 'errors_count' => count($result['errors']),
                 'duration' => round($duration, 2),
             ]);
@@ -74,6 +80,11 @@ class ImportRecipesJob implements ShouldQueue
             Cache::put('import_recipes_last_result', [
                 'imported' => $result['imported'],
                 'updated' => $result['updated'],
+                'deleted' => $result['deleted'] ?? 0,
+                'deleted_items' => $result['deleted_items'] ?? 0,
+                'cleanup_performed' => $result['cleanup_performed'] ?? false,
+                'item_cleanup_performed' => $result['item_cleanup_performed'] ?? false,
+                'unknown_job_ids' => $result['unknown_job_ids'] ?? [],
                 'errors_count' => count($result['errors']),
                 'duration' => round($duration, 2),
                 'finished_at' => now()->toIso8601String(),
@@ -103,6 +114,11 @@ class ImportRecipesJob implements ShouldQueue
             Cache::put('import_recipes_last_result', [
                 'imported' => 0,
                 'updated' => 0,
+                'deleted' => 0,
+                'deleted_items' => 0,
+                'cleanup_performed' => false,
+                'item_cleanup_performed' => false,
+                'unknown_job_ids' => [],
                 'errors_count' => 1,
                 'duration' => round($duration, 2),
                 'finished_at' => now()->toIso8601String(),

@@ -83,7 +83,26 @@
                                     {{ formatNumber(resource.price) }} K/u
                                 </div>
                             </div>
-                            <Link 
+                            <FavoriteToggleButton
+                                :item-id="resource.id"
+                                :item-name="resource.name"
+                                :initial-favorite="favoriteItemIds.includes(resource.id)"
+                            />
+                            <button
+                                type="button"
+                                class="p-2 rounded-full text-gray-400 hover:bg-gray-200 hover:text-gray-600 transition-colors"
+                                :title="`Copier : ${resource.name}`"
+                                :aria-label="`Copier ${resource.name}`"
+                                @click="copyResourceName(resource)"
+                            >
+                                <svg v-if="copiedResourceId !== resource.id" class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3" />
+                                </svg>
+                                <svg v-else class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
+                                </svg>
+                            </button>
+                            <Link
                                 :href="route('items.show', resource.id)"
                                 class="p-1 text-blue-600 hover:text-blue-800"
                             >
@@ -116,6 +135,7 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { Link, usePage } from '@inertiajs/vue3';
+import FavoriteToggleButton from '@/Components/FavoriteToggleButton.vue';
 
 const page = usePage();
 
@@ -127,13 +147,18 @@ const props = defineProps({
     itemName: {
         type: String,
         required: true
-    }
+    },
+    favoriteItemIds: {
+        type: Array,
+        default: () => [],
+    },
 });
 
 const craftCount = ref(1);
 const showResources = ref(false);
 const totalResources = ref({});
 const copied = ref(false);
+const copiedResourceId = ref(null);
 
 const calculateResources = () => {
     totalResources.value = {};
@@ -204,6 +229,21 @@ const totalCost = computed(() => {
         return sum;
     }, 0);
 });
+
+const copyResourceName = async resource => {
+    try {
+        await navigator.clipboard.writeText(resource.name);
+        copiedResourceId.value = resource.id;
+
+        setTimeout(() => {
+            if (copiedResourceId.value === resource.id) {
+                copiedResourceId.value = null;
+            }
+        }, 2000);
+    } catch (err) {
+        console.error('Erreur lors de la copie:', err);
+    }
+};
 
 const copyResourcesList = async () => {
     const text = sortedResources.value

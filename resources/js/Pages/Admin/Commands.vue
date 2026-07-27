@@ -213,7 +213,7 @@ onUnmounted(() => {
                         <!-- Last result -->
                         <div v-if="status.last_result && !isRunning()" class="mb-4 p-4 bg-gray-50 dark:bg-gray-700/50 border border-gray-200 dark:border-gray-600 rounded-lg">
                             <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Dernier import</h4>
-                            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-7 gap-3">
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Importées</p>
                                     <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ status.last_result?.imported ?? 0 }}</p>
@@ -221,6 +221,20 @@ onUnmounted(() => {
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Mises à jour</p>
                                     <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ status.last_result?.updated ?? 0 }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Recettes supprimées</p>
+                                    <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ status.last_result?.deleted ?? 0 }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Items supprimés</p>
+                                    <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ status.last_result?.deleted_items ?? 0 }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-xs text-gray-500 dark:text-gray-400">Métiers inconnus</p>
+                                    <p class="text-lg font-semibold" :class="(status.last_result?.unknown_job_ids?.length ?? 0) > 0 ? 'text-amber-600 dark:text-amber-400' : 'text-gray-900 dark:text-gray-100'">
+                                        {{ status.last_result?.unknown_job_ids?.length ?? 0 }}
+                                    </p>
                                 </div>
                                 <div>
                                     <p class="text-xs text-gray-500 dark:text-gray-400">Erreurs</p>
@@ -233,6 +247,9 @@ onUnmounted(() => {
                                     <p class="text-lg font-semibold text-gray-900 dark:text-gray-100">{{ formatDuration(status.last_result?.duration) }}</p>
                                 </div>
                             </div>
+                            <p v-if="status.last_result?.unknown_job_ids?.length" class="mt-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                                IDs DofusDB inconnus : {{ status.last_result.unknown_job_ids.join(', ') }}
+                            </p>
                             <p class="text-xs text-gray-500 dark:text-gray-500 mt-2">
                                 Terminé le {{ formatDate(status.last_result?.finished_at) }}
                             </p>

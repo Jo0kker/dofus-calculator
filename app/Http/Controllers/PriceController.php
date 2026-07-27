@@ -21,7 +21,7 @@ class PriceController extends Controller
             'price_mode' => ['required', Rule::in(['community', 'personal'])],
         ]);
 
-        DB::transaction(function () use ($request, $validated) {
+        $result = DB::transaction(function () use ($request, $validated) {
             if ($validated['price_mode'] === 'personal') {
                 $this->priceSubmissionService->submitPersonalPrice(
                     $request->user(),
@@ -29,20 +29,26 @@ class PriceController extends Controller
                     $validated['server_id'],
                     $validated['price'],
                 );
-            } else {
-                $this->priceSubmissionService->submitCommunityPrice(
-                    $request->user(),
-                    $validated['item_id'],
-                    $validated['server_id'],
-                    $validated['price'],
-                );
+
+                return null;
             }
 
+            return $this->priceSubmissionService->submitCommunityPriceWithResult(
+                $request->user(),
+                $validated['item_id'],
+                $validated['server_id'],
+                $validated['price'],
+            );
         });
 
-        $message = $validated['price_mode'] === 'personal'
-            ? 'Prix personnel enregistré avec succès'
-            : 'Relevé communautaire pris en compte dans le consensus';
+        $message = match (true) {
+            $validated['price_mode'] === 'personal' => 'Prix personnel enregistré avec succès.',
+            ! $result['recorded'] => 'Prix identique à votre dernier relevé : aucun doublon créé.',
+            default => sprintf(
+                'Prix communautaire mis à jour : %s K.',
+                number_format($result['price']->price, 0, ',', ' '),
+            ),
+        };
 
         return back()->with('success', $message);
     }
@@ -96,9 +102,11 @@ class PriceController extends Controller
             'price_mode' => ['sometimes', Rule::in(['community', 'personal'])],
         ]);
 
-        DB::transaction(function () use ($request, $validated) {
+        $stats = DB::transaction(function () use ($request, $validated) {
             $mode = $validated['price_mode'] ?? 'community';
             $prices = collect($validated['prices'])->keyBy('item_id')->values();
+            $recorded = 0;
+            $ignored = 0;
 
             foreach ($prices as $priceData) {
                 if ($mode === 'personal') {
@@ -108,18 +116,27 @@ class PriceController extends Controller
                         $validated['server_id'],
                         $priceData['price'],
                     );
-                } else {
-                    $this->priceSubmissionService->submitCommunityPrice(
-                        $request->user(),
-                        $priceData['item_id'],
-                        $validated['server_id'],
-                        $priceData['price'],
-                    );
+                    $recorded++;
+
+                    continue;
                 }
+
+                $result = $this->priceSubmissionService->submitCommunityPriceWithResult(
+                    $request->user(),
+                    $priceData['item_id'],
+                    $validated['server_id'],
+                    $priceData['price'],
+                );
+                $result['recorded'] ? $recorded++ : $ignored++;
             }
 
+            return compact('recorded', 'ignored');
         });
 
-        return back()->with('success', 'Prix mis à jour avec succès');
+        $message = $stats['ignored'] > 0
+            ? sprintf('%d relevé(s) enregistré(s), %d doublon(s) ignoré(s).', $stats['recorded'], $stats['ignored'])
+            : sprintf('%d prix mis à jour avec succès.', $stats['recorded']);
+
+        return back()->with('success', $message);
     }
 }
