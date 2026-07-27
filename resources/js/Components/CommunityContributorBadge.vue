@@ -20,7 +20,7 @@ const props = defineProps({
 const formatNumber = value => new Intl.NumberFormat('fr-FR').format(Number(value || 0));
 const contributionLabel = () => {
     const total = Number(props.contributionCount || 0);
-    return `${formatNumber(total)} contribution${total > 1 ? 's' : ''}`;
+    return `${formatNumber(total)} contribution${total === 1 ? '' : 's'}`;
 };
 
 const contributorTier = computed(() => {
@@ -108,13 +108,17 @@ const contributorTier = computed(() => {
         sparklesClass: 'text-orange-600',
     };
 });
+
+const accessibleTierLabel = computed(() => contributorTier.value.label === 'Relevé par'
+    ? 'Contributeur débutant'
+    : contributorTier.value.label);
 </script>
 
 <template>
     <span
         class="group/contributor relative inline-flex min-w-0 max-w-full items-center rounded-xl border transition duration-150 hover:-translate-y-px"
         :class="[compact ? 'gap-1.5 px-1.5 py-1' : 'gap-2 px-2 py-1.5', contributorTier.containerClass]"
-        :aria-label="`Dernier relevé par ${name}, ${contributionLabel()}`"
+        :aria-label="`Dernier relevé par ${name}, ${contributionLabel()}, palier ${accessibleTierLabel}`"
     >
         <span
             class="relative inline-flex shrink-0 items-center justify-center rounded-full ring-1 shadow-sm"
