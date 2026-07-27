@@ -56,7 +56,7 @@ class CommunityPriceTrustService
         $observations = $this->loadLatestContributorObservations($itemId, $serverId);
         $activeContributors = $this->activeContributorsCount($serverId);
         $analysis = $this->analyze($observations, $activeContributors);
-        $latestObservation = $observations->sortByDesc('created_at')->first();
+        $latestObservation = $observations->first();
 
         foreach ($observations as $observation) {
             $metric = $analysis['observation_metrics'][$observation->id];
@@ -250,7 +250,7 @@ class CommunityPriceTrustService
         $averageReliability = $weightedReliability / $totalWeight;
         $targetContributors = max(3, min(8, 3 + (int) floor(log10(max(1, $activeContributors)) * 2)));
         $evidenceScore = min(100, 100 * $effectiveContributors / $targetContributors);
-        $latestObservation = $observations->sortByDesc('created_at')->first();
+        $latestObservation = $observations->first();
         $freshnessScore = $weightedFreshness / $totalWeight;
         $confidenceScore = (int) round(
             (0.45 * $evidenceScore)

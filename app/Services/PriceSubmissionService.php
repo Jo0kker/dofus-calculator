@@ -58,13 +58,9 @@ class PriceSubmissionService
         ]);
 
         $now = now();
-        $lastContributionAt = DB::table('price_contribution_days')
-            ->where('user_id', $user->id)
-            ->where('server_id', $serverId)
-            ->where('item_id', $itemId)
-            ->max('created_at');
+        $lastContributionAt = $this->lastContributionAt($user->id, $itemId, $serverId);
         $canCountContribution = $lastContributionAt === null
-            || Carbon::parse($lastContributionAt)->lte($now->copy()->subDay());
+            || $lastContributionAt->lte($now->copy()->subDay());
 
         $counted = $canCountContribution
             ? DB::table('price_contribution_days')->insertOrIgnore([
@@ -85,6 +81,41 @@ class PriceSubmissionService
             'price' => $this->trustService->recalculate($itemId, $serverId),
             'recorded' => true,
         ];
+    }
+
+    private function lastContributionAt(int $userId, int $itemId, int $serverId): ?Carbon
+    {
+        $contribution = DB::table('price_contribution_days')
+            ->where('user_id', $userId)
+            ->where('server_id', $serverId)
+            ->where('item_id', $itemId)
+            ->orderByDesc('contribution_date')
+            ->orderByDesc('id')
+            ->first(['contribution_date', 'created_at']);
+
+        if (! $contribution) {
+            return null;
+        }
+
+        $contributionDate = Carbon::parse($contribution->contribution_date);
+        $recordedAt = Carbon::parse($contribution->created_at);
+
+        if ($recordedAt->isSameDay($contributionDate)) {
+            return $recordedAt;
+        }
+
+        $historyCreatedAt = PriceHistory::query()
+            ->where('created_by', $userId)
+            ->where('item_id', $itemId)
+            ->where('server_id', $serverId)
+            ->whereDate('created_at', $contributionDate->toDateString())
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->value('created_at');
+
+        return $historyCreatedAt
+            ? Carbon::parse($historyCreatedAt)
+            : $contributionDate->endOfDay();
     }
 
     public function submitPersonalPrice(User $user, int $itemId, int $serverId, int $price): PersonalItemPrice

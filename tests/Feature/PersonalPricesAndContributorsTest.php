@@ -10,6 +10,7 @@ use App\Models\Server;
 use App\Models\User;
 use App\Models\UserItemPricePreference;
 use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
 use Laravel\Sanctum\Sanctum;
@@ -145,6 +146,41 @@ it('requires 24 elapsed hours before counting another contribution for an item',
     ])->assertSessionHasNoErrors();
 
     expect(PriceHistory::count())->toBe(3)
+        ->and($this->user->fresh()->price_contributions_count)->toBe(2);
+});
+
+it('uses the historical observation time for contribution rows backfilled with a recent timestamp', function () {
+    $this->travelTo('2026-07-28 12:00:00');
+    $historicalObservationAt = now()->subDays(10)->setTime(18, 30);
+
+    PriceHistory::create([
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'price' => 1000,
+        'created_by' => $this->user->id,
+        'created_at' => $historicalObservationAt,
+        'updated_at' => $historicalObservationAt,
+    ]);
+    DB::table('price_contribution_days')->insert([
+        'user_id' => $this->user->id,
+        'server_id' => $this->server->id,
+        'item_id' => $this->item->id,
+        'contribution_date' => $historicalObservationAt->toDateString(),
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+    $this->user->forceFill(['price_contributions_count' => 1])->save();
+
+    $this->actingAs($this->user)
+        ->post(route('prices.store'), [
+            'server_id' => $this->server->id,
+            'item_id' => $this->item->id,
+            'price' => 1200,
+            'price_mode' => 'community',
+        ])
+        ->assertSessionHasNoErrors();
+
+    expect(DB::table('price_contribution_days')->count())->toBe(2)
         ->and($this->user->fresh()->price_contributions_count)->toBe(2);
 });
 
