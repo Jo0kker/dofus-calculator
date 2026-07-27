@@ -35,11 +35,13 @@
                 <div
                     v-if="!isUsingPersonalPrice && communityPrice"
                     class="flex min-w-0 flex-1 flex-wrap items-center gap-x-2.5 gap-y-1.5 text-[10px] text-gray-600"
+                    :class="{ 'justify-end': compactContributorBadge }"
                 >
                     <CommunityContributorBadge
                         v-if="communityPrice.user"
                         :name="communityPrice.user.name"
                         :contribution-count="communityPrice.user.price_contributions_count"
+                        :compact="compactContributorBadge"
                     />
                 </div>
 
@@ -121,6 +123,10 @@ import PriceReportModal from './PriceReportModal.vue';
 
 const props = defineProps({
     ingredient: Object,
+    compactContributorBadge: {
+        type: Boolean,
+        default: false,
+    },
 });
 
 const emit = defineEmits(['price-updated']);

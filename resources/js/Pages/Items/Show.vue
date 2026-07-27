@@ -272,6 +272,7 @@
                             
                             <IngredientPricing 
                                 :ingredient="item"
+                                :compact-contributor-badge="true"
                                 @price-updated="onIngredientPriceUpdated"
                             />
                         </div>
