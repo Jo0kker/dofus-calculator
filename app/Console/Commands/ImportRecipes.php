@@ -2,9 +2,12 @@
 
 namespace App\Console\Commands;
 
+use App\Services\DiscordWebhookService;
 use App\Services\DofusDBImportService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
+use Laravel\Telescope\Telescope;
+use Throwable;
 
 class ImportRecipes extends Command
 {
@@ -27,7 +30,7 @@ class ImportRecipes extends Command
     /**
      * Execute the console command.
      */
-    public function handle(DofusDBImportService $importService)
+    public function handle(DofusDBImportService $importService, DiscordWebhookService $discord): int
     {
         // Désactiver le query log pour économiser la mémoire
         DB::disableQueryLog();
@@ -48,9 +51,30 @@ class ImportRecipes extends Command
 
         $this->info("Chunk size: $chunkSize (memory cleared every $chunkSize recipes)");
 
-        $result = $importService->importRecipesFirst($limit, $chunkSize, function ($processed, $memoryUsage) {
-            $this->line("  → Processed $processed recipes | Memory: {$memoryUsage}MB");
-        });
+        $startedAt = microtime(true);
+
+        try {
+            $result = Telescope::withoutRecording(
+                fn () => $importService->importRecipesFirst(
+                    $limit,
+                    $chunkSize,
+                    function ($processed, $memoryUsage) {
+                        $this->line("  → Processed $processed recipes | Memory: {$memoryUsage}MB");
+                    },
+                ),
+            );
+        } catch (Throwable $exception) {
+            $discord->sendImportResult([
+                'imported' => 0,
+                'updated' => 0,
+                'deleted' => 0,
+                'deleted_items' => 0,
+                'unknown_job_ids' => [],
+                'errors' => [$exception->getMessage()],
+            ], microtime(true) - $startedAt, 'Commande CLI');
+
+            throw $exception;
+        }
 
         $this->newLine();
         $this->info('Import completed!');
@@ -80,6 +104,8 @@ class ImportRecipes extends Command
         $this->info('Recipe-first import ensures all imported items have recipes!');
         $this->info('This approach is perfect for a profitability calculator.');
 
-        return 0;
+        $discord->sendImportResult($result, microtime(true) - $startedAt, 'Commande CLI');
+
+        return self::SUCCESS;
     }
 }

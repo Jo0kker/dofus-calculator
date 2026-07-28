@@ -20,9 +20,11 @@ Schedule::call(function () {
     ImportRecipesJob::dispatch('Planification quotidienne');
 })->name('import-recipes-daily')
     ->dailyAt('04:00')
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->onOneServer();
 
 Schedule::command('prices:recalculate-confidence')
     ->name('recalculate-price-confidence-daily')
     ->dailyAt('03:30')
-    ->withoutOverlapping();
+    ->withoutOverlapping()
+    ->onOneServer();
