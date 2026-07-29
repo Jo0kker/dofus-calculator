@@ -10,6 +10,7 @@ use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Laravel\Telescope\Telescope;
 
 class ImportRecipesJob implements ShouldQueue
 {
@@ -31,6 +32,8 @@ class ImportRecipesJob implements ShouldQueue
         // Only update cache if handle() didn't already set a terminal status
         // (e.g. job killed by timeout before catch block could run)
         $currentStatus = Cache::get('import_recipes_status');
+        $shouldNotify = $currentStatus === 'running';
+
         if ($currentStatus === 'running') {
             Cache::put('import_recipes_status', 'failed', now()->addHours(6));
             Cache::forget('import_recipes_progress');
@@ -39,6 +42,20 @@ class ImportRecipesJob implements ShouldQueue
         Log::error('ImportRecipesJob marked as failed by queue', [
             'error' => $exception?->getMessage(),
         ]);
+
+        if ($shouldNotify) {
+            $startedAt = Cache::get('import_recipes_started_at');
+            $duration = $startedAt ? now()->diffInSeconds($startedAt, true) : 0;
+
+            app(DiscordWebhookService::class)->sendImportResult([
+                'imported' => 0,
+                'updated' => 0,
+                'deleted' => 0,
+                'deleted_items' => 0,
+                'unknown_job_ids' => [],
+                'errors' => [$exception?->getMessage() ?? 'Le worker a interrompu le job.'],
+            ], $duration, $this->triggeredBy);
+        }
     }
 
     public function handle(DofusDBImportService $importService, DiscordWebhookService $discord): void
@@ -54,12 +71,18 @@ class ImportRecipesJob implements ShouldQueue
         Log::info('ImportRecipesJob started', ['triggered_by' => $this->triggeredBy]);
 
         try {
-            $result = $importService->importRecipesFirst($this->maxRecipes, 100, function ($processed, $memoryUsage) {
-                Cache::put('import_recipes_progress', [
-                    'processed' => $processed,
-                    'memory' => $memoryUsage,
-                ], now()->addHours(6));
-            });
+            $result = Telescope::withoutRecording(
+                fn () => $importService->importRecipesFirst(
+                    $this->maxRecipes,
+                    100,
+                    function ($processed, $memoryUsage) {
+                        Cache::put('import_recipes_progress', [
+                            'processed' => $processed,
+                            'memory' => $memoryUsage,
+                        ], now()->addHours(6));
+                    },
+                ),
+            );
 
             $duration = microtime(true) - $startTime;
 
