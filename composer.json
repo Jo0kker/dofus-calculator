@@ -13,6 +13,7 @@
     "license": "MIT",
     "require": {
         "php": "^8.4",
+        "codiblenet/laravel-mail-reacher": "^0.1.0",
         "dedoc/scramble": "^0.12.35",
         "inertiajs/inertia-laravel": "^2.0",
         "laravel/framework": "^12.0",
