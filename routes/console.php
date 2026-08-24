@@ -28,3 +28,9 @@ Schedule::command('prices:recalculate-confidence')
     ->dailyAt('03:30')
     ->withoutOverlapping()
     ->onOneServer();
+
+Schedule::command('passport:purge')
+    ->name('purge-expired-oauth-tokens')
+    ->hourly()
+    ->withoutOverlapping()
+    ->onOneServer();

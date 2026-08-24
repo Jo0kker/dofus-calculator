@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autoriser {{ $client->name }} — {{ config('app.name') }}</title>
+    <link rel="icon" href="/favicon.svg" type="image/svg+xml">
+    <style>
+        :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+        * { box-sizing: border-box; }
+        body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #111827; color: #f9fafb; }
+        main { width: 100%; max-width: 520px; padding: 32px; border: 1px solid #374151; border-radius: 18px; background: #1f2937; box-shadow: 0 24px 60px rgba(0, 0, 0, .35); }
+        h1 { margin: 0 0 12px; font-size: 1.55rem; }
+        p { color: #d1d5db; line-height: 1.55; }
+        .account { padding: 12px 14px; border-radius: 10px; background: #111827; color: #f3f4f6; }
+        ul { margin: 18px 0 24px; padding-left: 22px; color: #e5e7eb; }
+        li + li { margin-top: 8px; }
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        button { width: 100%; padding: 12px 16px; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+        .deny { background: #374151; color: #f9fafb; }
+        .approve { background: #d97706; color: #fff; }
+        .security { margin: 22px 0 0; font-size: .82rem; color: #9ca3af; }
+        @media (max-width: 560px) {
+            body { display: block; padding: 12px; }
+            main { max-width: none; min-height: calc(100vh - 24px); padding: 24px 20px; border-radius: 14px; }
+        }
+        @media (max-width: 360px) {
+            .actions { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+<main>
+    <h1>Autoriser {{ $client->name }} ?</h1>
+    <p>L’application souhaite accéder à votre compte {{ config('app.name') }}.</p>
+
+    <p class="account">Connecté avec <strong>{{ $user->email }}</strong></p>
+
+    @if (count($scopes) > 0)
+        <p>Permissions demandées :</p>
+        <ul>
+            @foreach ($scopes as $scope)
+                <li>{{ $scope->description }}</li>
+            @endforeach
+        </ul>
+    @endif
+
+    <div class="actions">
+        <form method="POST" action="{{ route('passport.authorizations.deny') }}">
+            @csrf
+            @method('DELETE')
+            <input type="hidden" name="auth_token" value="{{ $authToken }}">
+            <input type="hidden" name="state" value="{{ $request->state }}">
+            <button class="deny" type="submit">Refuser</button>
+        </form>
+
+        <form method="POST" action="{{ route('passport.authorizations.approve') }}">
+            @csrf
+            <input type="hidden" name="auth_token" value="{{ $authToken }}">
+            <input type="hidden" name="state" value="{{ $request->state }}">
+            <button class="approve" type="submit">Autoriser</button>
+        </form>
+    </div>
+
+    <p class="security">Vous pourrez révoquer cet accès à tout moment. Votre mot de passe n’est jamais transmis à l’application mobile.</p>
+</main>
+</body>
+</html>

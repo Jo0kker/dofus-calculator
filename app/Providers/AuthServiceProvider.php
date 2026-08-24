@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use Carbon\CarbonInterval;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Passport\Passport;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -21,7 +23,7 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        Passport::$deviceCodeGrantEnabled = false;
     }
 
     /**
@@ -29,6 +31,15 @@ class AuthServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        Passport::tokensCan([
+            'profile:read' => 'Consulter le profil du compte',
+        ]);
+
+        Passport::defaultScopes(['profile:read']);
+        Passport::tokensExpireIn(CarbonInterval::minutes(config('passport.access_token_lifetime')));
+        Passport::refreshTokensExpireIn(CarbonInterval::minutes(config('passport.refresh_token_lifetime')));
+        Passport::authorizationView('oauth.authorize');
+
         Gate::define('moderate', function ($user) {
             return $user->canModerate();
         });

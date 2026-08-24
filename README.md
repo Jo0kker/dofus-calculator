@@ -17,7 +17,7 @@ Application web Laravel/Vue pour estimer les coûts de craft, suivre les prix de
 - Vue 3 + Inertia.js
 - PostgreSQL
 - Vite + Tailwind CSS
-- Laravel Sanctum / Jetstream
+- Laravel Sanctum / Passport / Jetstream
 
 ## Démarrage rapide
 
@@ -62,9 +62,11 @@ Le projet inclut des commandes Artisan pour peupler les données Dofus :
 Les routes API publiques sont disponibles sous `/api`.
 La documentation OpenAPI peut être générée et consultée via Scramble selon la configuration du projet.
 
+L’application mobile utilise OAuth2 Authorization Code avec PKCE. Le contrat d’intégration et les commandes de préparation sont décrits dans [docs/mobile-oauth.md](docs/mobile-oauth.md).
+
 ## Déploiement
 
-Un push sur la branche `main` déclenche automatiquement le déploiement de l'application. Aucune étape manuelle n'est nécessaire.
+Un push sur la branche `main` déclenche automatiquement le déploiement de l'application. Chaque environnement OAuth doit disposer de ses clés Passport et d’un client mobile public configuré avec son callback exact ; voir [docs/mobile-oauth.md](docs/mobile-oauth.md).
 
 ## Contribution
 

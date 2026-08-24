@@ -126,12 +126,14 @@ class DiscordWebhookService
 
     private function formatDuration(float $seconds): string
     {
-        if ($seconds < 60) {
+        $roundedSeconds = max(0, (int) round($seconds));
+
+        if ($roundedSeconds < 60) {
             return round($seconds, 1).'s';
         }
 
-        $minutes = floor($seconds / 60);
-        $remainingSeconds = round($seconds - ($minutes * 60));
+        $minutes = intdiv($roundedSeconds, 60);
+        $remainingSeconds = $roundedSeconds % 60;
 
         return "{$minutes}m {$remainingSeconds}s";
     }

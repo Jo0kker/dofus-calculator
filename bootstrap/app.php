@@ -24,6 +24,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'abilities' => \Laravel\Sanctum\Http\Middleware\CheckAbilities::class,
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
+            'scopes' => \Laravel\Passport\Http\Middleware\CheckToken::class,
+            'scope' => \Laravel\Passport\Http\Middleware\CheckTokenForAnyScope::class,
             'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
             'track.api' => \App\Http\Middleware\TrackApiUsage::class,
         ]);

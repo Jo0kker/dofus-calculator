@@ -13,6 +13,20 @@ use App\Http\Controllers\PriceController;
 use App\Http\Controllers\ServerController;
 use App\Http\Controllers\SitemapController;
 use Illuminate\Support\Facades\Route;
+use Laravel\Passport\Passport;
+
+Route::get('/.well-known/oauth-authorization-server', function () {
+    return response()->json([
+        'issuer' => rtrim(config('app.url'), '/'),
+        'authorization_endpoint' => url('/oauth/authorize'),
+        'token_endpoint' => url('/oauth/token'),
+        'grant_types_supported' => ['authorization_code', 'refresh_token'],
+        'response_types_supported' => ['code'],
+        'token_endpoint_auth_methods_supported' => ['none', 'client_secret_basic', 'client_secret_post'],
+        'code_challenge_methods_supported' => ['S256'],
+        'scopes_supported' => Passport::scopeIds(),
+    ]);
+})->name('oauth.metadata');
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');

@@ -3,11 +3,20 @@
 use App\Http\Controllers\Api\ItemApiController;
 use App\Http\Controllers\Api\PriceApiController;
 use App\Http\Controllers\Api\ServerApiController;
+use App\Http\Controllers\Api\V1\MobileSessionController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 // Apply JSON response and tracking middleware to all API routes
 Route::middleware(['force.json', 'track.api'])->group(function () {
+    Route::prefix('v1')->group(function () {
+        Route::get('/me', [MobileSessionController::class, 'show'])
+            ->middleware(['auth:api', 'scopes:profile:read']);
+
+        Route::delete('/session', [MobileSessionController::class, 'destroy'])
+            ->middleware('auth:api');
+    });
+
     // Public routes (no authentication required)
     Route::get('/servers', [ServerApiController::class, 'index']);
     Route::get('/servers/{server}', [ServerApiController::class, 'show']);

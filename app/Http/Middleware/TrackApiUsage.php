@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\ApiLog;
+use App\Models\OAuthUser;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -24,7 +25,7 @@ class TrackApiUsage
 
     /**
      * Termine le middleware et log la requête après que la réponse soit envoyée
-     * Cela permet de capturer l'utilisateur authentifié par Sanctum
+     * Cela permet de capturer l'utilisateur authentifié par Sanctum ou Passport
      */
     public function terminate(Request $request, Response $response): void
     {
@@ -32,14 +33,17 @@ class TrackApiUsage
         $itemsAffected = $this->getItemsAffected($request, $response);
 
         // Récupérer les infos du token si authentifié
-        // À ce stade, auth:sanctum a déjà authentifié l'utilisateur
+        // À ce stade, le guard de la route a déjà authentifié l'utilisateur
         $user = $request->user();
         $tokenName = null;
 
         if ($user && $request->bearerToken()) {
-            // Récupérer le nom du token utilisé
-            $token = $user->tokens()->where('token', hash('sha256', $request->bearerToken()))->first();
-            $tokenName = $token?->name;
+            if ($user instanceof OAuthUser) {
+                $tokenName = auth('api')->client()?->name ?? 'OAuth2';
+            } else {
+                $token = $user->tokens()->where('token', hash('sha256', $request->bearerToken()))->first();
+                $tokenName = $token?->name;
+            }
         }
 
         // Logger la requête
@@ -57,7 +61,7 @@ class TrackApiUsage
             ]);
         } catch (\Exception $e) {
             // En cas d'erreur de logging, on ne veut pas casser la requête
-            logger()->error('Failed to log API usage: ' . $e->getMessage());
+            logger()->error('Failed to log API usage: '.$e->getMessage());
         }
     }
 
