@@ -6,13 +6,14 @@
     <title>Autoriser {{ $client->name }} — {{ config('app.name') }}</title>
     <link rel="icon" href="/favicon.svg" type="image/svg+xml">
     <style>
-        :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
+        :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; display: grid; place-items: center; padding: 24px; background: #111827; color: #f9fafb; }
         main { width: 100%; max-width: 520px; padding: 32px; border: 1px solid #374151; border-radius: 18px; background: #1f2937; box-shadow: 0 24px 60px rgba(0, 0, 0, .35); }
         h1 { margin: 0 0 12px; font-size: 1.55rem; }
         p { color: #d1d5db; line-height: 1.55; }
         .account { padding: 12px 14px; border-radius: 10px; background: #111827; color: #f3f4f6; }
+        .account strong { overflow-wrap: anywhere; }
         ul { margin: 18px 0 24px; padding-left: 22px; color: #e5e7eb; }
         li + li { margin-top: 8px; }
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
@@ -20,11 +21,18 @@
         .deny { background: #374151; color: #f9fafb; }
         .approve { background: #d97706; color: #fff; }
         .security { margin: 22px 0 0; font-size: .82rem; color: #9ca3af; }
-        @media (max-width: 560px) {
-            body { display: block; padding: 12px; }
-            main { max-width: none; min-height: calc(100vh - 24px); padding: 24px 20px; border-radius: 14px; }
-        }
-        @media (max-width: 360px) {
+        @media (max-width: 640px) {
+            body { display: block; padding: 0; background: #1f2937; }
+            main {
+                max-width: none;
+                min-height: 100vh;
+                min-height: 100dvh;
+                padding: 24px max(16px, env(safe-area-inset-right)) max(32px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+                border: 0;
+                border-radius: 0;
+                box-shadow: none;
+            }
+            h1 { font-size: clamp(1.45rem, 7vw, 1.75rem); line-height: 1.2; }
             .actions { grid-template-columns: 1fr; }
         }
     </style>
