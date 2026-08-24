@@ -30,6 +30,11 @@ Route::get('/.well-known/oauth-authorization-server', function () {
 
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
+Route::view('/support', 'legal.support')->name('support');
+Route::view('/account-deletion', 'legal.account-deletion')->name('account-deletion');
+Route::get('/account-deletion/start', fn () => redirect()->route('profile.show'))
+    ->middleware('auth')
+    ->name('account-deletion.start');
 
 // Public routes - accessible without authentication
 Route::get('/items', [ItemController::class, 'index'])->name('items.index');
