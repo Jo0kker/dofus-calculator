@@ -37,7 +37,8 @@ class OAuthDocumentation
                 ->authorizationUrl(url('/oauth/authorize'))
                 ->tokenUrl(url('/oauth/token'))
                 ->refreshUrl(url('/oauth/token'))
-                ->addScope('profile:read', 'Consulter le profil et le serveur sélectionné'));
+                ->addScope('profile:read', 'Consulter le profil et le serveur sélectionné')
+                ->addScope('prices:write', 'Publier des prix communautaires'));
 
         $openApi->components->addSecurityScheme('OAuth2', $scheme);
     }
@@ -45,6 +46,16 @@ class OAuthDocumentation
     private function secureMobileEndpoints(OpenApi $openApi): void
     {
         foreach ($openApi->paths as $path) {
+            if (in_array($path->path, ['prices', 'prices/bulk'], true)) {
+                foreach ($path->operations as $operation) {
+                    $operation->security = [
+                        new SecurityRequirement(['OAuth2' => ['prices:write']]),
+                    ];
+                }
+
+                continue;
+            }
+
             if (! in_array($path->path, ['v1/me', 'v1/session'], true)) {
                 continue;
             }
@@ -68,7 +79,7 @@ class OAuthDocumentation
             ->addProperty('response_types_supported', $this->stringArray(['code']))
             ->addProperty('token_endpoint_auth_methods_supported', $this->stringArray(['none']))
             ->addProperty('code_challenge_methods_supported', $this->stringArray(['S256']))
-            ->addProperty('scopes_supported', $this->stringArray(['profile:read']));
+            ->addProperty('scopes_supported', $this->stringArray(['profile:read', 'prices:write']));
 
         $operation = Operation::make('get')
             ->setOperationId('getOAuthServerMetadata')
@@ -97,7 +108,7 @@ class OAuthDocumentation
                 $this->query('client_id', 'Client ID public de l’application', true, '01a034b2-f813-7052-ab61-683ee146f854'),
                 $this->query('redirect_uri', 'Callback exact enregistré pour l’application', true, 'dofuscalculator://auth/callback'),
                 $this->query('response_type', 'Toujours `code`', true, 'code', ['code']),
-                $this->query('scope', 'Permissions séparées par des espaces', true, 'profile:read'),
+                $this->query('scope', 'Permissions séparées par des espaces', true, 'profile:read prices:write'),
                 $this->query('state', 'Valeur aléatoire à vérifier au retour', true, 'random-state'),
                 $this->query('code_challenge', 'Empreinte SHA-256 encodée en Base64 URL-safe du code_verifier', true, 'PKCE_CHALLENGE'),
                 $this->query('code_challenge_method', 'Méthode utilisée pour calculer le challenge', true, 'S256', ['S256']),

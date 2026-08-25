@@ -3,6 +3,7 @@
 use App\Models\ApiLog;
 use App\Models\Item;
 use App\Models\ItemPrice;
+use App\Models\OAuthUser;
 use App\Models\PersonalItemPrice;
 use App\Models\PriceHistory;
 use App\Models\Recipe;
@@ -13,6 +14,7 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Inertia\Testing\AssertableInertia as Assert;
+use Laravel\Passport\Passport;
 use Laravel\Sanctum\Sanctum;
 
 beforeEach(function () {
@@ -527,6 +529,37 @@ it('counts API price submissions in the same contribution history', function () 
     expect($this->user->submittedPrices()->count())->toBe(1)
         ->and($this->user->submittedPrices()->first()->price)->toBe(1450)
         ->and($this->user->fresh()->price_contributions_count)->toBe(1);
+});
+
+it('accepts price submissions from a passport mobile token', function () {
+    $oauthUser = OAuthUser::query()->findOrFail($this->user->id);
+
+    Passport::actingAs($oauthUser, ['prices:write']);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [[
+            'item_id' => $this->item->id,
+            'price' => 1450,
+        ]],
+    ])->assertOk();
+
+    expect($this->user->submittedPrices()->count())->toBe(1)
+        ->and($this->user->submittedPrices()->first()->price)->toBe(1450);
+});
+
+it('rejects passport price submissions without the write scope', function () {
+    $oauthUser = OAuthUser::query()->findOrFail($this->user->id);
+
+    Passport::actingAs($oauthUser, ['profile:read']);
+
+    $this->postJson('/api/prices', [
+        'server_id' => $this->server->id,
+        'prices' => [[
+            'item_id' => $this->item->id,
+            'price' => 1450,
+        ]],
+    ])->assertForbidden();
 });
 
 it('counts every distinct item in a large API import', function () {

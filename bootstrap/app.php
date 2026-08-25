@@ -26,6 +26,7 @@ return Application::configure(basePath: dirname(__DIR__))
             'ability' => \Laravel\Sanctum\Http\Middleware\CheckForAnyAbility::class,
             'scopes' => \Laravel\Passport\Http\Middleware\CheckToken::class,
             'scope' => \Laravel\Passport\Http\Middleware\CheckTokenForAnyScope::class,
+            'prices.write' => \App\Http\Middleware\EnsureCanWritePrices::class,
             'force.json' => \App\Http\Middleware\ForceJsonResponse::class,
             'track.api' => \App\Http\Middleware\TrackApiUsage::class,
         ]);

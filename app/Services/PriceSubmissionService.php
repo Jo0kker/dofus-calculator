@@ -2,10 +2,10 @@
 
 namespace App\Services;
 
+use App\Models\BaseUser;
 use App\Models\ItemPrice;
 use App\Models\PersonalItemPrice;
 use App\Models\PriceHistory;
-use App\Models\User;
 use App\Models\UserItemPricePreference;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
@@ -14,7 +14,7 @@ class PriceSubmissionService
 {
     public function __construct(private readonly CommunityPriceTrustService $trustService) {}
 
-    public function submitCommunityPrice(User $user, int $itemId, int $serverId, int $price): ItemPrice
+    public function submitCommunityPrice(BaseUser $user, int $itemId, int $serverId, int $price): ItemPrice
     {
         return $this->submitCommunityPriceWithResult($user, $itemId, $serverId, $price)['price'];
     }
@@ -23,7 +23,7 @@ class PriceSubmissionService
      * @return array{price: ItemPrice, recorded: bool}
      */
     public function submitCommunityPriceWithResult(
-        User $user,
+        BaseUser $user,
         int $itemId,
         int $serverId,
         int $price,
@@ -118,7 +118,7 @@ class PriceSubmissionService
             : $contributionDate->endOfDay();
     }
 
-    public function submitPersonalPrice(User $user, int $itemId, int $serverId, int $price): PersonalItemPrice
+    public function submitPersonalPrice(BaseUser $user, int $itemId, int $serverId, int $price): PersonalItemPrice
     {
         return PersonalItemPrice::updateOrCreate(
             [
@@ -130,7 +130,7 @@ class PriceSubmissionService
         );
     }
 
-    public function rememberItemMode(User $user, int $itemId, int $serverId, ?string $mode): void
+    public function rememberItemMode(BaseUser $user, int $itemId, int $serverId, ?string $mode): void
     {
         if ($mode !== 'personal') {
             UserItemPricePreference::query()

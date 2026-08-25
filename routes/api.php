@@ -31,8 +31,8 @@ Route::middleware(['force.json', 'track.api'])->group(function () {
         });
     });
 
-    // Write operations (requires authentication + write permission)
-    Route::middleware(['auth:sanctum', 'abilities:write'])->group(function () {
+    // Write operations accept legacy Sanctum tokens and OAuth Passport tokens.
+    Route::middleware(['auth:sanctum,api', 'prices.write'])->group(function () {
         Route::post('/prices', [PriceApiController::class, 'store']);
         Route::post('/prices/bulk', [PriceApiController::class, 'bulkUpdate']);
     });

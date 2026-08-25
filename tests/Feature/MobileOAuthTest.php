@@ -28,14 +28,16 @@ test('oauth authorization server metadata advertises the secure mobile flow', fu
         ->assertJsonPath('authorization_endpoint', url('/oauth/authorize'))
         ->assertJsonPath('token_endpoint', url('/oauth/token'))
         ->assertJsonPath('code_challenge_methods_supported.0', 'S256')
-        ->assertJsonFragment(['profile:read']);
+        ->assertJsonFragment(['profile:read'])
+        ->assertJsonFragment(['prices:write']);
 });
 
 test('the generated api documentation includes the complete oauth flow', function () {
     $response = $this->getJson(route('scramble.docs.document'))
         ->assertOk()
         ->assertJsonPath('components.securitySchemes.OAuth2.type', 'oauth2')
-        ->assertJsonPath('components.securitySchemes.OAuth2.flows.authorizationCode.scopes.profile:read', 'Consulter le profil et le serveur sélectionné');
+        ->assertJsonPath('components.securitySchemes.OAuth2.flows.authorizationCode.scopes.profile:read', 'Consulter le profil et le serveur sélectionné')
+        ->assertJsonPath('components.securitySchemes.OAuth2.flows.authorizationCode.scopes.prices:write', 'Publier des prix communautaires');
 
     $document = $response->json();
 
@@ -46,6 +48,12 @@ test('the generated api documentation includes the complete oauth flow', functio
         ->and($document['paths']['/oauth/token']['post']['requestBody']['content']['application/x-www-form-urlencoded']['schema']['properties']['client_id']['type'])->toBe('string')
         ->and($document['paths']['/v1/me']['get']['security'])->toBe([
             ['OAuth2' => ['profile:read']],
+        ])
+        ->and($document['paths']['/prices']['post']['security'])->toBe([
+            ['OAuth2' => ['prices:write']],
+        ])
+        ->and($document['paths']['/prices/bulk']['post']['security'])->toBe([
+            ['OAuth2' => ['prices:write']],
         ]);
 });
 

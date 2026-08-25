@@ -42,6 +42,7 @@ class AuthServiceProvider extends ServiceProvider
     {
         Passport::tokensCan([
             'profile:read' => 'Consulter le profil du compte',
+            'prices:write' => 'Publier des prix communautaires',
         ]);
 
         Passport::defaultScopes(['profile:read']);

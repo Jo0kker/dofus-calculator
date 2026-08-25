@@ -40,6 +40,7 @@ class OAuthApplicationController extends Controller
             'tokenEndpoint' => url('/oauth/token'),
             'scopes' => [
                 ['id' => 'profile:read', 'description' => 'Consulter le profil du compte'],
+                ['id' => 'prices:write', 'description' => 'Publier des prix communautaires'],
             ],
             'showRevoked' => $showRevoked,
             'revokedApplicationsCount' => $revokedApplicationsCount,
