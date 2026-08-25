@@ -64,6 +64,8 @@ La documentation OpenAPI peut être générée et consultée via Scramble selon 
 
 L’application mobile utilise OAuth2 Authorization Code avec PKCE. Le contrat d’intégration et les commandes de préparation sont décrits dans [docs/mobile-oauth.md](docs/mobile-oauth.md).
 
+Les utilisateurs peuvent enregistrer leurs applications publiques depuis `/developer/applications`. Les règles de sécurité, PKCE, limites et outils de supervision sont décrits dans [docs/oauth-applications.md](docs/oauth-applications.md).
+
 ## Déploiement
 
 Un push sur la branche `main` déclenche automatiquement le déploiement de l'application. Chaque environnement OAuth doit disposer de ses clés Passport et d’un client mobile public configuré avec son callback exact ; voir [docs/mobile-oauth.md](docs/mobile-oauth.md).

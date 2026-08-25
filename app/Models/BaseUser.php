@@ -6,10 +6,12 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Fortify\TwoFactorAuthenticatable;
 use Laravel\Jetstream\HasProfilePhoto;
+use Laravel\Passport\Passport;
 
 abstract class BaseUser extends Authenticatable
 {
@@ -130,6 +132,14 @@ abstract class BaseUser extends Authenticatable
     public function apiLogs(): HasMany
     {
         return $this->hasMany(ApiLog::class);
+    }
+
+    /**
+     * OAuth applications registered by this account.
+     */
+    public function oauthApps(): MorphMany
+    {
+        return $this->morphMany(Passport::clientModel(), 'owner');
     }
 
     public function reviewedReports(): HasMany

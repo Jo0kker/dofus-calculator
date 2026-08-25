@@ -14,10 +14,14 @@
         p { color: #d1d5db; line-height: 1.55; }
         .account { padding: 12px 14px; border-radius: 10px; background: #111827; color: #f3f4f6; }
         .account strong { overflow-wrap: anywhere; }
+        .account a { display: inline-block; margin-top: 8px; color: #fbbf24; font-size: .9rem; font-weight: 700; text-decoration: none; }
+        .account a:hover { text-decoration: underline; }
+        .third-party { margin: -2px 0 18px; color: #fbbf24; font-size: .85rem; }
         ul { margin: 18px 0 24px; padding-left: 22px; color: #e5e7eb; }
         li + li { margin-top: 8px; }
         .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         button { width: 100%; padding: 12px 16px; border: 0; border-radius: 10px; font: inherit; font-weight: 700; cursor: pointer; }
+        button:disabled { cursor: wait; opacity: .65; }
         .deny { background: #374151; color: #f9fafb; }
         .approve { background: #d97706; color: #fff; }
         .security { margin: 22px 0 0; font-size: .82rem; color: #9ca3af; }
@@ -42,7 +46,14 @@
     <h1>Autoriser {{ $client->name }} ?</h1>
     <p>L’application souhaite accéder à votre compte {{ config('app.name') }}.</p>
 
-    <p class="account">Connecté avec <strong>{{ $user->email }}</strong></p>
+    <div class="account">
+        Connecté avec <strong>{{ $user->email }}</strong><br>
+        <a href="{{ $request->fullUrlWithQuery(['prompt' => 'login']) }}">Ce n’est pas vous ? Changer de compte</a>
+    </div>
+
+    @if ($client->owner_id)
+        <p class="third-party">Application tierce proposée par {{ $client->owner?->name ?? 'un développeur externe' }}.</p>
+    @endif
 
     @if (count($scopes) > 0)
         <p>Permissions demandées :</p>
@@ -70,7 +81,17 @@
         </form>
     </div>
 
-    <p class="security">Vous pourrez révoquer cet accès à tout moment. Votre mot de passe n’est jamais transmis à l’application mobile.</p>
+    <p class="security">Vous pourrez révoquer cet accès à tout moment. Votre mot de passe n’est jamais transmis à l’application.</p>
 </main>
+<script>
+    document.querySelectorAll('form').forEach((form) => {
+        form.addEventListener('submit', () => {
+            document.querySelectorAll('button[type="submit"]').forEach((button) => {
+                button.disabled = true;
+                button.setAttribute('aria-busy', 'true');
+            });
+        }, { once: true });
+    });
+</script>
 </body>
 </html>

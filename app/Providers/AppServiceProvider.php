@@ -2,11 +2,11 @@
 
 namespace App\Providers;
 
-use Illuminate\Support\ServiceProvider;
-use Illuminate\Support\Facades\URL;
+use App\OpenApi\OAuthDocumentation;
 use Dedoc\Scramble\Scramble;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
 
 class AppServiceProvider extends ServiceProvider
@@ -32,10 +32,12 @@ class AppServiceProvider extends ServiceProvider
         });
 
         // Ajouter le schéma de sécurité Bearer Token
-        Scramble::afterOpenApiGenerated(function (OpenApi $openApi) {
+        Scramble::afterOpenApiGenerated(function (OpenApi $openApi): void {
             $openApi->secure(
                 SecurityScheme::http('bearer', 'JWT')
             );
+
+            app(OAuthDocumentation::class)($openApi);
         });
     }
 }

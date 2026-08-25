@@ -2,6 +2,8 @@
 
 L’application mobile utilise le flux **Authorization Code avec PKCE/S256**. Elle est un client public : aucun `client_secret` ne doit être intégré au binaire.
 
+Le `Client ID` est le seul identifiant OAuth à configurer dans l’application. Il est public ; la sécurité du flux repose sur le callback exact, le `state` et PKCE, pas sur un secret embarqué.
+
 ## Préparation d’un environnement
 
 ```bash
@@ -13,6 +15,8 @@ php artisan passport:client --public \
 ```
 
 Le client local peut conserver plusieurs callbacks exacts, par exemple `http://localhost/auth/callback` pour les tests web et `dofuscalculator://auth/callback` pour l’application NativePHP. Pour la publication, un Universal Link iOS / App Link Android vérifié par le domaine pourra remplacer le schéma personnalisé. Le `Client ID` est une configuration publique de l’application mobile.
+
+Les développeurs tiers peuvent créer eux-mêmes leur application publique depuis `/developer/applications` au lieu d’exécuter la commande Artisan. Les mêmes règles de callback et l’obligation PKCE s’appliquent.
 
 Les clés `storage/oauth-private.key` et `storage/oauth-public.key` ne doivent pas être versionnées. En production, elles peuvent aussi être injectées avec `PASSPORT_PRIVATE_KEY` et `PASSPORT_PUBLIC_KEY`.
 
@@ -83,6 +87,8 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=authorization_code&client_id=CLIENT_ID&redirect_uri=CALLBACK_EXACT&code=CODE&code_verifier=VERIFIER
 ```
 
+Aucun `client_secret` ne doit être ajouté à cette requête.
+
 La réponse contient `access_token`, `refresh_token` et `expires_in`. L’application NativePHP chiffre les deux jetons au repos avec la clé propre à l’installation. NativePHP conserve cette `APP_KEY` dans le Keychain iOS ou l’Android Keystore ; le plugin Secure Storage reste optionnel si une conservation directe de petites valeurs dans ces coffres est souhaitée.
 
 ## 3. Appeler l’API
@@ -104,6 +110,8 @@ Content-Type: application/x-www-form-urlencoded
 grant_type=refresh_token&client_id=CLIENT_ID&refresh_token=REFRESH_TOKEN
 ```
 
+Aucun `client_secret` n’est requis pour le rafraîchissement d’un client public.
+
 Le serveur effectue une rotation : le client doit remplacer **à la fois** l’access token et le refresh token par les nouvelles valeurs. Un refresh token inutilisé expire après 30 jours avec la configuration par défaut.
 
 ## 5. Déconnexion
@@ -123,3 +131,5 @@ Le serveur révoque l’access token courant et son refresh token. L’applicati
 | `profile:read` | Consulter le profil et le serveur sélectionné |
 
 Les routes métier et les tokens Sanctum existants restent inchangés. Passport ajoute uniquement l’authentification OAuth de l’application mobile ; le contrat fonctionnel reste celui de la documentation API existante.
+
+La création et la gestion des applications tierces sont détaillées dans [oauth-applications.md](oauth-applications.md).

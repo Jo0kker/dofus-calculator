@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Laravel\Passport\Client;
 
 class ApiLog extends Model
 {
     protected $fillable = [
         'user_id',
+        'oauth_client_id',
         'token_name',
         'endpoint',
         'method',
@@ -28,5 +30,10 @@ class ApiLog extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function oauthApplication(): BelongsTo
+    {
+        return $this->belongsTo(Client::class, 'oauth_client_id');
     }
 }

@@ -36,10 +36,13 @@ class TrackApiUsage
         // À ce stade, le guard de la route a déjà authentifié l'utilisateur
         $user = $request->user();
         $tokenName = null;
+        $oauthClientId = null;
 
         if ($user && $request->bearerToken()) {
             if ($user instanceof OAuthUser) {
-                $tokenName = auth('api')->client()?->name ?? 'OAuth2';
+                $oauthClient = auth('api')->client();
+                $oauthClientId = $oauthClient?->getKey();
+                $tokenName = $oauthClient?->name ?? 'OAuth2';
             } else {
                 $token = $user->tokens()->where('token', hash('sha256', $request->bearerToken()))->first();
                 $tokenName = $token?->name;
@@ -50,6 +53,7 @@ class TrackApiUsage
         try {
             ApiLog::create([
                 'user_id' => $user?->id,
+                'oauth_client_id' => $oauthClientId,
                 'token_name' => $tokenName,
                 'endpoint' => $request->path(),
                 'method' => $request->method(),

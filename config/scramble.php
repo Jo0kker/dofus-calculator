@@ -1,7 +1,5 @@
 <?php
 
-use Dedoc\Scramble\Http\Middleware\RestrictedDocsAccess;
-
 return [
     /*
      * Your API path. By default, all routes starting with this path will be added to the docs.
@@ -29,7 +27,7 @@ return [
         /*
          * Description rendered on the home page of the API documentation (`/docs/api`).
          */
-        'description' => 'Dofus crafting calculator API. Search for items, retrieve their prices, and update item prices across different servers.',
+        'description' => 'API de Dofus Calculator. Les applications utilisent OAuth2 avec un Client ID public, sans Client secret. Créez une application depuis /developer/applications, ouvrez /oauth/authorize, puis échangez le code sur /oauth/token.',
     ],
 
     /*

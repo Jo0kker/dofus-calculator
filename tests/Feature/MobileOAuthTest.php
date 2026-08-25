@@ -31,6 +31,24 @@ test('oauth authorization server metadata advertises the secure mobile flow', fu
         ->assertJsonFragment(['profile:read']);
 });
 
+test('the generated api documentation includes the complete oauth flow', function () {
+    $response = $this->getJson(route('scramble.docs.document'))
+        ->assertOk()
+        ->assertJsonPath('components.securitySchemes.OAuth2.type', 'oauth2')
+        ->assertJsonPath('components.securitySchemes.OAuth2.flows.authorizationCode.scopes.profile:read', 'Consulter le profil et le serveur sélectionné');
+
+    $document = $response->json();
+
+    expect($document['paths']['/.well-known/oauth-authorization-server']['get']['operationId'])->toBe('getOAuthServerMetadata')
+        ->and($document['paths']['/oauth/authorize']['get']['operationId'])->toBe('authorizeOAuthApplication')
+        ->and($document['paths']['/oauth/authorize']['get']['parameters'][0]['name'])->toBe('client_id')
+        ->and($document['paths']['/oauth/token']['post']['operationId'])->toBe('exchangeOrRefreshOAuthToken')
+        ->and($document['paths']['/oauth/token']['post']['requestBody']['content']['application/x-www-form-urlencoded']['schema']['properties']['client_id']['type'])->toBe('string')
+        ->and($document['paths']['/v1/me']['get']['security'])->toBe([
+            ['OAuth2' => ['profile:read']],
+        ]);
+});
+
 test('oauth authorization requests reject unsafe pkce methods', function () {
     $this->get('/oauth/authorize?response_type=code&client_id=test&code_challenge='.str_repeat('a', 43).'&code_challenge_method=plain&state=test-state')
         ->assertBadRequest();
@@ -102,6 +120,81 @@ test('mobile clients can complete authorization code pkce and rotate refresh tok
     ], ['Accept' => 'application/json'])
         ->assertBadRequest()
         ->assertJsonPath('error', 'invalid_grant');
+});
+
+test('parallel oauth consent pages keep their authorization requests isolated', function () {
+    $user = User::factory()->create();
+    $redirectUri = 'https://example.test/mobile/oauth/callback';
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        'Dofus Calculator Mobile',
+        [$redirectUri],
+        false,
+    );
+
+    $authorizationUrl = function (string $state) use ($client, $redirectUri): string {
+        $verifier = Str::random(64);
+        $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+
+        return '/oauth/authorize?'.http_build_query([
+            'client_id' => $client->id,
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'scope' => 'profile:read',
+            'state' => $state,
+            'code_challenge' => $challenge,
+            'code_challenge_method' => 'S256',
+        ]);
+    };
+
+    $this->actingAs($user)->get($authorizationUrl('first-request'))->assertOk();
+    $firstAuthToken = session('authToken');
+
+    $this->get($authorizationUrl('second-request'))->assertOk();
+    $secondAuthToken = session('authToken');
+
+    expect($firstAuthToken)->not->toBe($secondAuthToken);
+
+    $firstAuthorization = $this->post('/oauth/authorize', [
+        'auth_token' => $firstAuthToken,
+        'state' => 'first-request',
+    ]);
+    $firstAuthorization->assertRedirect();
+    parse_str(parse_url($firstAuthorization->headers->get('Location'), PHP_URL_QUERY), $firstCallback);
+    expect($firstCallback['state'])->toBe('first-request');
+
+    $secondAuthorization = $this->post('/oauth/authorize', [
+        'auth_token' => $secondAuthToken,
+        'state' => 'second-request',
+    ]);
+    $secondAuthorization->assertRedirect();
+    parse_str(parse_url($secondAuthorization->headers->get('Location'), PHP_URL_QUERY), $secondCallback);
+    expect($secondCallback['state'])->toBe('second-request');
+});
+
+test('oauth consent lets the user switch accounts without losing the authorization request', function () {
+    $user = User::factory()->create();
+    $redirectUri = 'https://example.test/mobile/oauth/callback';
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        'Dofus Calculator Mobile',
+        [$redirectUri],
+        false,
+    );
+    $verifier = Str::random(64);
+    $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+
+    $response = $this->actingAs($user)->get('/oauth/authorize?'.http_build_query([
+        'client_id' => $client->id,
+        'redirect_uri' => $redirectUri,
+        'response_type' => 'code',
+        'scope' => 'profile:read',
+        'state' => Str::random(40),
+        'code_challenge' => $challenge,
+        'code_challenge_method' => 'S256',
+    ]));
+
+    $response->assertOk()
+        ->assertSee('Ce n’est pas vous ? Changer de compte')
+        ->assertSee('prompt=login', false);
 });
 
 test('mobile profile requires a passport access token', function () {

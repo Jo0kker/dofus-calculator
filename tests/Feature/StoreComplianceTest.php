@@ -4,6 +4,8 @@ use App\Actions\Jetstream\DeleteUser;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+use Laravel\Passport\ClientRepository;
+use Laravel\Passport\Passport;
 
 it('publishes the public store compliance pages', function () {
     $this->get('/privacy-policy')->assertOk()->assertSee('Dofus Calc');
@@ -58,4 +60,29 @@ it('removes passport credentials when deleting an account', function () {
         ->and(DB::table('oauth_refresh_tokens')->where('access_token_id', 'access-token')->exists())->toBeFalse()
         ->and(DB::table('oauth_auth_codes')->where('user_id', $user->id)->exists())->toBeFalse()
         ->and(DB::table('oauth_device_codes')->where('user_id', $user->id)->exists())->toBeFalse();
+});
+
+it('removes oauth applications owned by a deleted developer account', function () {
+    $developer = User::factory()->create();
+    $customer = User::factory()->create();
+    $application = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        'Application du développeur',
+        ['https://example.test/callback'],
+        false,
+        $developer,
+    );
+
+    $token = Passport::token()->newQuery()->forceCreate([
+        'id' => str_repeat('c', 80),
+        'user_id' => $customer->id,
+        'client_id' => $application->id,
+        'scopes' => ['profile:read'],
+        'revoked' => false,
+        'expires_at' => now()->addHour(),
+    ]);
+
+    app(DeleteUser::class)->delete($developer);
+
+    $this->assertDatabaseMissing('oauth_clients', ['id' => $application->id]);
+    $this->assertDatabaseMissing('oauth_access_tokens', ['id' => $token->id]);
 });

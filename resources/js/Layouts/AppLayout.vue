@@ -152,6 +152,9 @@ const openCurrentFrameInDesktopWindow = () => {
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('admin.api-monitoring')" :active="route().current('admin.api-monitoring')">
                                     📊 API Monitoring
                                 </NavLink>
+                                <NavLink v-if="$page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'admin'" :href="route('admin.oauth-applications.index')" :active="route().current('admin.oauth-applications.*')">
+                                    🔐 Applications
+                                </NavLink>
                                 <NavLink v-if="$page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'admin'" :href="route('admin.commands')" :active="route().current('admin.commands')">
                                     ⚙️ Commandes
                                 </NavLink>
@@ -253,6 +256,10 @@ const openCurrentFrameInDesktopWindow = () => {
                                             API Tokens
                                         </DropdownLink>
 
+                                        <DropdownLink :href="route('developer.oauth-applications.index')">
+                                            Applications
+                                        </DropdownLink>
+
                                         <div class="border-t border-gray-200 dark:border-gray-600" />
 
                                         <!-- Authentication -->
@@ -335,6 +342,9 @@ const openCurrentFrameInDesktopWindow = () => {
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && ($page.props.auth.user.role === 'admin' || $page.props.auth.user.role === 'moderator')" :href="route('admin.api-monitoring')" :active="route().current('admin.api-monitoring')">
                             📊 API Monitoring
                         </ResponsiveNavLink>
+                        <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'admin'" :href="route('admin.oauth-applications.index')" :active="route().current('admin.oauth-applications.*')">
+                            🔐 Applications
+                        </ResponsiveNavLink>
                         <ResponsiveNavLink v-if="$page.props.auth && $page.props.auth.user && $page.props.auth.user.role === 'admin'" :href="route('admin.commands')" :active="route().current('admin.commands')">
                             ⚙️ Commandes
                         </ResponsiveNavLink>
@@ -364,6 +374,10 @@ const openCurrentFrameInDesktopWindow = () => {
 
                             <ResponsiveNavLink v-if="$page.props.jetstream && $page.props.jetstream.hasApiFeatures" :href="route('api-tokens.index')" :active="route().current('api-tokens.index')">
                                 API Tokens
+                            </ResponsiveNavLink>
+
+                            <ResponsiveNavLink :href="route('developer.oauth-applications.index')" :active="route().current('developer.oauth-applications.*')">
+                                Applications
                             </ResponsiveNavLink>
 
                             <!-- Authentication -->

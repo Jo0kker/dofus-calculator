@@ -6,8 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Models\ApiLog;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
+use Inertia\Inertia;
+use Laravel\Passport\Passport;
 
 class ApiMonitoringController extends Controller
 {
@@ -60,7 +61,7 @@ class ApiMonitoringController extends Controller
             });
 
         // Logs récents avec filtres
-        $logsQuery = ApiLog::with('user:id,name,email')
+        $logsQuery = ApiLog::with(['user:id,name,email', 'oauthApplication:id,name'])
             ->orderByDesc('created_at');
 
         // Filtres
@@ -69,7 +70,7 @@ class ApiMonitoringController extends Controller
         }
 
         if ($request->filled('endpoint')) {
-            $logsQuery->where('endpoint', 'like', '%' . $request->endpoint . '%');
+            $logsQuery->where('endpoint', 'like', '%'.$request->endpoint.'%');
         }
 
         if ($request->filled('method')) {
@@ -78,6 +79,10 @@ class ApiMonitoringController extends Controller
 
         if ($request->filled('date')) {
             $logsQuery->whereDate('created_at', $request->date);
+        }
+
+        if ($request->filled('oauth_client_id')) {
+            $logsQuery->where('oauth_client_id', $request->oauth_client_id);
         }
 
         $logs = $logsQuery->paginate(50);
@@ -94,7 +99,11 @@ class ApiMonitoringController extends Controller
             'topPriceUpdaters' => $topPriceUpdaters,
             'logs' => $logs,
             'users' => $users,
-            'filters' => $request->only(['user_id', 'endpoint', 'method', 'date']),
+            'oauthApplications' => Passport::client()->newQuery()
+                ->select('id', 'name')
+                ->orderBy('name')
+                ->get(),
+            'filters' => $request->only(['user_id', 'oauth_client_id', 'endpoint', 'method', 'date']),
         ]);
     }
 }

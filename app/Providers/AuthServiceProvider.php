@@ -2,9 +2,15 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\OAuth\ApproveAuthorizationController;
+use App\Http\Controllers\OAuth\DenyAuthorizationController;
+use App\OAuth\PendingAuthorizationRequestStore;
 use Carbon\CarbonInterval;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Gate;
+use Laravel\Passport\Http\Controllers\ApproveAuthorizationController as PassportApproveAuthorizationController;
+use Laravel\Passport\Http\Controllers\DenyAuthorizationController as PassportDenyAuthorizationController;
 use Laravel\Passport\Passport;
 
 class AuthServiceProvider extends ServiceProvider
@@ -24,6 +30,9 @@ class AuthServiceProvider extends ServiceProvider
     public function register(): void
     {
         Passport::$deviceCodeGrantEnabled = false;
+
+        $this->app->bind(PassportApproveAuthorizationController::class, ApproveAuthorizationController::class);
+        $this->app->bind(PassportDenyAuthorizationController::class, DenyAuthorizationController::class);
     }
 
     /**
@@ -38,7 +47,14 @@ class AuthServiceProvider extends ServiceProvider
         Passport::defaultScopes(['profile:read']);
         Passport::tokensExpireIn(CarbonInterval::minutes(config('passport.access_token_lifetime')));
         Passport::refreshTokensExpireIn(CarbonInterval::minutes(config('passport.refresh_token_lifetime')));
-        Passport::authorizationView('oauth.authorize');
+        Passport::authorizationView(function (array $parameters) {
+            /** @var Request $request */
+            $request = $parameters['request'];
+
+            app(PendingAuthorizationRequestStore::class)->remember($request, $parameters['authToken']);
+
+            return response()->view('oauth.authorize', $parameters);
+        });
 
         Gate::define('moderate', function ($user) {
             return $user->canModerate();

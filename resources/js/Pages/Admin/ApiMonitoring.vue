@@ -1,5 +1,5 @@
 <script setup>
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { Head, Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 
@@ -9,11 +9,13 @@ const props = defineProps({
     topPriceUpdaters: Array,
     logs: Object,
     users: Array,
+    oauthApplications: Array,
     filters: Object,
 });
 
 const filters = ref({
     user_id: props.filters.user_id || '',
+    oauth_client_id: props.filters.oauth_client_id || '',
     endpoint: props.filters.endpoint || '',
     method: props.filters.method || '',
     date: props.filters.date || '',
@@ -29,6 +31,7 @@ const applyFilters = () => {
 const clearFilters = () => {
     filters.value = {
         user_id: '',
+        oauth_client_id: '',
         endpoint: '',
         method: '',
         date: '',
@@ -176,12 +179,20 @@ const toggleRow = (logId) => {
                 <!-- Filters -->
                 <div class="bg-white dark:bg-gray-800 shadow rounded-lg p-6 mb-6">
                     <h3 class="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Filtres</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Utilisateur</label>
                             <select v-model="filters.user_id" @change="applyFilters" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:border-blue-500 focus:ring-blue-500">
                                 <option value="">Tous</option>
                                 <option v-for="user in users" :key="user.id" :value="user.id">{{ user.name }}</option>
+                            </select>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Application OAuth</label>
+                            <select v-model="filters.oauth_client_id" @change="applyFilters" class="w-full rounded-md border-gray-300 dark:border-gray-600 dark:bg-gray-700 dark:text-gray-100 focus:border-blue-500 focus:ring-blue-500">
+                                <option value="">Toutes</option>
+                                <option v-for="application in oauthApplications" :key="application.id" :value="application.id">{{ application.name }}</option>
                             </select>
                         </div>
 
@@ -226,6 +237,7 @@ const toggleRow = (logId) => {
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Date</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Utilisateur</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Token</th>
+                                        <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Application</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Méthode</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Endpoint</th>
                                         <th class="px-3 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase">Status</th>
@@ -251,6 +263,9 @@ const toggleRow = (logId) => {
                                             <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
                                                 {{ log.token_name || '-' }}
                                             </td>
+                                            <td class="px-3 py-3 text-xs text-gray-600 dark:text-gray-400">
+                                                {{ log.oauth_application?.name || '-' }}
+                                            </td>
                                             <td class="px-3 py-3">
                                                 <span :class="getMethodColor(log.method)" class="px-2 py-1 text-xs font-semibold rounded">
                                                     {{ log.method }}
@@ -270,7 +285,7 @@ const toggleRow = (logId) => {
                                             </td>
                                         </tr>
                                         <tr v-if="expandedRows[log.id]" class="bg-gray-50 dark:bg-gray-900">
-                                            <td colspan="9" class="px-6 py-4">
+                                            <td colspan="10" class="px-6 py-4">
                                                 <div class="space-y-2">
                                                     <div>
                                                         <h4 class="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2">Données de la requête :</h4>

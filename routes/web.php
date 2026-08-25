@@ -5,6 +5,7 @@ use App\Http\Controllers\CalculatorController;
 use App\Http\Controllers\Desktop\DesktopApiTokenController;
 use App\Http\Controllers\Desktop\DesktopFavoriteController;
 use App\Http\Controllers\Desktop\DesktopItemController;
+use App\Http\Controllers\Developer\OAuthApplicationController as DeveloperOAuthApplicationController;
 use App\Http\Controllers\FavoriteController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\ItemController;
@@ -84,6 +85,12 @@ Route::middleware([
     Route::post('/api-tokens', [ApiTokenController::class, 'store'])->name('api-tokens.store');
     Route::delete('/api-tokens/{token}', [ApiTokenController::class, 'destroy'])->name('api-tokens.destroy');
 
+    // Third-party OAuth applications owned by the signed-in user.
+    Route::get('/developer/applications', [DeveloperOAuthApplicationController::class, 'index'])->name('developer.oauth-applications.index');
+    Route::post('/developer/applications', [DeveloperOAuthApplicationController::class, 'store'])->name('developer.oauth-applications.store');
+    Route::put('/developer/applications/{oauthApplication}', [DeveloperOAuthApplicationController::class, 'update'])->name('developer.oauth-applications.update');
+    Route::delete('/developer/applications/{oauthApplication}', [DeveloperOAuthApplicationController::class, 'destroy'])->name('developer.oauth-applications.destroy');
+
     // Moderation routes (for admins/moderators)
     Route::middleware(['can:moderate'])->group(function () {
         Route::get('/moderation', [ModerationController::class, 'index'])->name('moderation.index');
@@ -102,6 +109,10 @@ Route::middleware([
 
     // Admin-only routes
     Route::middleware(['can:admin'])->group(function () {
+        Route::get('/admin/oauth-applications', [\App\Http\Controllers\Admin\OAuthApplicationController::class, 'index'])->name('admin.oauth-applications.index');
+        Route::post('/admin/oauth-applications/{oauthApplication}/revoke', [\App\Http\Controllers\Admin\OAuthApplicationController::class, 'revoke'])->name('admin.oauth-applications.revoke');
+        Route::post('/admin/oauth-applications/{oauthApplication}/restore', [\App\Http\Controllers\Admin\OAuthApplicationController::class, 'restore'])->name('admin.oauth-applications.restore');
+        Route::post('/admin/oauth-applications/{oauthApplication}/revoke-tokens', [\App\Http\Controllers\Admin\OAuthApplicationController::class, 'revokeTokens'])->name('admin.oauth-applications.revoke-tokens');
         Route::get('/admin/commands', [\App\Http\Controllers\Admin\AdminCommandController::class, 'index'])->name('admin.commands');
         Route::post('/admin/commands/import-recipes', [\App\Http\Controllers\Admin\AdminCommandController::class, 'importRecipes'])->name('admin.commands.import-recipes');
         Route::get('/admin/commands/import-recipes/status', [\App\Http\Controllers\Admin\AdminCommandController::class, 'importStatus'])->name('admin.commands.import-recipes.status');
