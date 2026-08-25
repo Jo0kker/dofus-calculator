@@ -24,6 +24,7 @@
         button:disabled { cursor: wait; opacity: .65; }
         .deny { background: #374151; color: #f9fafb; }
         .approve { background: #d97706; color: #fff; }
+        .approve[aria-busy="true"] { background: #b45309; opacity: 1; }
         .security { margin: 22px 0 0; font-size: .82rem; color: #9ca3af; }
         @media (max-width: 640px) {
             body { display: block; padding: 0; background: #1f2937; }
@@ -84,14 +85,38 @@
     <p class="security">Vous pourrez révoquer cet accès à tout moment. Votre mot de passe n’est jamais transmis à l’application.</p>
 </main>
 <script>
+    const resetAuthorizationButtons = () => {
+        document.querySelectorAll('button[type="submit"]').forEach((button) => {
+            button.disabled = false;
+            button.removeAttribute('aria-busy');
+
+            if (button.dataset.idleLabel) {
+                button.textContent = button.dataset.idleLabel;
+            }
+        });
+    };
+
     document.querySelectorAll('form').forEach((form) => {
         form.addEventListener('submit', () => {
             document.querySelectorAll('button[type="submit"]').forEach((button) => {
+                button.dataset.idleLabel = button.textContent;
                 button.disabled = true;
                 button.setAttribute('aria-busy', 'true');
             });
+
+            const submittedButton = form.querySelector('button[type="submit"]');
+
+            if (submittedButton) {
+                submittedButton.textContent = submittedButton.classList.contains('approve')
+                    ? 'Autorisation en cours…'
+                    : 'Refus en cours…';
+            }
         }, { once: true });
     });
+
+    // Safari may restore this page from its back/forward cache after a failed
+    // navigation. In that case the consent controls must become usable again.
+    window.addEventListener('pageshow', resetAuthorizationButtons);
 </script>
 </body>
 </html>
