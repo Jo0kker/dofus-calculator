@@ -41,6 +41,9 @@ Route::get('/.well-known/apple-app-site-association', function () {
                 ]],
             ]],
         ],
+        'webcredentials' => [
+            'apps' => ['RMWD6LMQD7.com.air24.dofuscalculator'],
+        ],
     ])->header('Cache-Control', 'public, max-age=3600');
 })->name('apple-app-site-association');
 
