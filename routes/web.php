@@ -29,6 +29,21 @@ Route::get('/.well-known/oauth-authorization-server', function () {
     ]);
 })->name('oauth.metadata');
 
+Route::get('/.well-known/apple-app-site-association', function () {
+    return response()->json([
+        'applinks' => [
+            'apps' => [],
+            'details' => [[
+                'appIDs' => ['RMWD6LMQD7.com.air24.dofuscalculator'],
+                'components' => [[
+                    '/' => '/auth/callback',
+                    'comment' => 'Retour OAuth de Dofus Calculator sur iOS',
+                ]],
+            ]],
+        ],
+    ])->header('Cache-Control', 'public, max-age=3600');
+})->name('apple-app-site-association');
+
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/sitemap.xml', [SitemapController::class, 'index'])->name('sitemap');
 Route::view('/support', 'legal.support')->name('support');

@@ -32,6 +32,14 @@ test('oauth authorization server metadata advertises the secure mobile flow', fu
         ->assertJsonFragment(['prices:write']);
 });
 
+test('the ios oauth callback domain is associated with the mobile application', function () {
+    $this->getJson(route('apple-app-site-association'))
+        ->assertOk()
+        ->assertHeader('Content-Type', 'application/json')
+        ->assertJsonPath('applinks.details.0.appIDs.0', 'RMWD6LMQD7.com.air24.dofuscalculator')
+        ->assertJsonPath('applinks.details.0.components.0./', '/auth/callback');
+});
+
 test('the generated api documentation includes the complete oauth flow', function () {
     $response = $this->getJson(route('scramble.docs.document'))
         ->assertOk()

@@ -106,7 +106,7 @@ class OAuthDocumentation
             ->addSecurity([])
             ->addParameters([
                 $this->query('client_id', 'Client ID public de l’application', true, '01a034b2-f813-7052-ab61-683ee146f854'),
-                $this->query('redirect_uri', 'Callback exact enregistré pour l’application', true, 'dofuscalculator://auth/callback'),
+                $this->query('redirect_uri', 'Callback exact enregistré pour l’application', true, 'https://dofus-calculator.fr/auth/callback'),
                 $this->query('response_type', 'Toujours `code`', true, 'code', ['code']),
                 $this->query('scope', 'Permissions séparées par des espaces', true, 'profile:read prices:write'),
                 $this->query('state', 'Valeur aléatoire à vérifier au retour', true, 'random-state'),
