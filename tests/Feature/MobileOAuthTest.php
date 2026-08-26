@@ -163,7 +163,9 @@ test('the ios custom scheme callback is handed off through a fallback page', fun
         ->assertOk()
         ->assertViewIs('oauth.mobile-callback')
         ->assertHeader('Cache-Control', 'must-revalidate, no-cache, no-store, private')
-        ->assertSee('Ouvrir Dofus Calculator');
+        ->assertSee('Revenir dans Dofus Calculator')
+        ->assertDontSee('window.location.replace', false)
+        ->assertDontSee('<script', false);
 
     $callbackUrl = $authorization->viewData('callbackUrl');
 

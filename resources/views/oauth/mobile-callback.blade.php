@@ -4,7 +4,7 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Retour vers Dofus Calculator</title>
-    <style nonce="{{ $nonce }}">
+    <style>
         :root { color-scheme: dark; font-family: Inter, ui-sans-serif, system-ui, sans-serif; }
         * { box-sizing: border-box; }
         body { margin: 0; min-height: 100vh; min-height: 100dvh; display: grid; place-items: center; padding: 24px; background: #111827; color: #f9fafb; }
@@ -21,21 +21,10 @@
 </head>
 <body>
 <main>
-    <h1>Retour vers Dofus Calculator</h1>
-    <p>La connexion est terminée. L’application va se rouvrir automatiquement.</p>
-    <a id="open-app" href="{{ $callbackUrl }}">Ouvrir Dofus Calculator</a>
-    <p class="hint">Si rien ne se passe, touchez le bouton ci-dessus.</p>
+    <h1>Connexion terminée</h1>
+    <p>Revenez dans l’application pour finaliser la connexion.</p>
+    <a id="open-app" href="{{ $callbackUrl }}">Revenir dans Dofus Calculator</a>
+    <p class="hint">Cette action ferme la fenêtre sécurisée.</p>
 </main>
-<script nonce="{{ $nonce }}">
-    const callbackUrl = @json($callbackUrl);
-
-    window.location.replace(callbackUrl);
-
-    // Some iOS browser builds require a user gesture before opening a custom
-    // scheme. The visible link remains available as a deterministic fallback.
-    document.getElementById('open-app').addEventListener('click', () => {
-        window.location.href = callbackUrl;
-    });
-</script>
 </body>
 </html>

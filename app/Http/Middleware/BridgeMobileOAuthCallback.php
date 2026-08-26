@@ -13,8 +13,9 @@ class BridgeMobileOAuthCallback
      *
      * Safari on recent iOS releases can leave a web authentication sheet on
      * the consent page when a POST response redirects directly to a custom
-     * scheme. A same-origin HTML response can initiate the handoff explicitly
-     * and also gives the user a manual fallback button.
+     * scheme. A same-origin HTML response gives the user an explicit handoff
+     * action. iOS requires that gesture on affected versions; attempting the
+     * custom-scheme navigation automatically leaves the auth sheet blank.
      */
     public function handle(Request $request, Closure $next): SymfonyResponse
     {
@@ -30,19 +31,16 @@ class BridgeMobileOAuthCallback
             return $response;
         }
 
-        $nonce = base64_encode(random_bytes(18));
-
         return response()
             ->view('oauth.mobile-callback', [
                 'callbackUrl' => $callbackUrl,
-                'nonce' => $nonce,
             ])
             ->header('Cache-Control', 'no-store, no-cache, must-revalidate, private')
             ->header('Pragma', 'no-cache')
             ->header('Referrer-Policy', 'no-referrer')
             ->header(
                 'Content-Security-Policy',
-                "default-src 'none'; style-src 'nonce-{$nonce}'; script-src 'nonce-{$nonce}'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+                "default-src 'none'; style-src 'unsafe-inline'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
             );
     }
 
