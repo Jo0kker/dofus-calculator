@@ -31,6 +31,13 @@ class BridgeMobileOAuthCallback
             return $response;
         }
 
+        // Android Custom Tabs hand custom-scheme redirects back to the
+        // application through its intent filter. Replacing that redirect with
+        // an HTML page would leave the user in Chrome instead.
+        if ($this->isAndroid($request)) {
+            return $response;
+        }
+
         return response()
             ->view('oauth.mobile-callback', [
                 'callbackUrl' => $callbackUrl,
@@ -58,5 +65,10 @@ class BridgeMobileOAuthCallback
             && ($parts['scheme'] ?? null) === 'dofuscalculator'
             && ($parts['host'] ?? null) === 'auth'
             && ($parts['path'] ?? null) === '/callback';
+    }
+
+    private function isAndroid(Request $request): bool
+    {
+        return str_contains((string) $request->userAgent(), 'Android');
     }
 }

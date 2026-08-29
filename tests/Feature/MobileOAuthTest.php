@@ -193,6 +193,56 @@ test('the ios custom scheme callback is handed off through a fallback page', fun
         ->assertJsonStructure(['access_token', 'refresh_token', 'expires_in']);
 });
 
+test('the Android custom scheme callback redirects directly to the application', function () {
+    $user = User::factory()->create();
+    $redirectUri = 'dofuscalculator://auth/callback';
+    $client = app(ClientRepository::class)->createAuthorizationCodeGrantClient(
+        'Dofus Calculator Mobile',
+        [$redirectUri],
+        false,
+    );
+    $verifier = Str::random(64);
+    $challenge = rtrim(strtr(base64_encode(hash('sha256', $verifier, true)), '+/', '-_'), '=');
+    $state = Str::random(40);
+    $androidUserAgent = 'Mozilla/5.0 (Linux; Android 16) AppleWebKit/537.36 Chrome/140 Mobile Safari/537.36';
+
+    $this->actingAs($user)
+        ->withHeader('User-Agent', $androidUserAgent)
+        ->get('/oauth/authorize?'.http_build_query([
+            'client_id' => $client->id,
+            'redirect_uri' => $redirectUri,
+            'response_type' => 'code',
+            'scope' => 'profile:read',
+            'state' => $state,
+            'code_challenge' => $challenge,
+            'code_challenge_method' => 'S256',
+        ]))
+        ->assertOk();
+
+    $authorization = $this->actingAs($user)
+        ->withHeader('User-Agent', $androidUserAgent)
+        ->post('/oauth/authorize', [
+            'auth_token' => session('authToken'),
+            'state' => $state,
+        ]);
+
+    $authorization->assertRedirect();
+    $callbackUrl = $authorization->headers->get('Location');
+
+    expect($callbackUrl)->toStartWith($redirectUri.'?');
+    parse_str(parse_url($callbackUrl, PHP_URL_QUERY), $callback);
+
+    $this->post('/oauth/token', [
+        'grant_type' => 'authorization_code',
+        'client_id' => $client->id,
+        'redirect_uri' => $redirectUri,
+        'code' => $callback['code'],
+        'code_verifier' => $verifier,
+    ], ['Accept' => 'application/json'])
+        ->assertOk()
+        ->assertJsonStructure(['access_token', 'refresh_token', 'expires_in']);
+});
+
 test('parallel oauth consent pages keep their authorization requests isolated', function () {
     $user = User::factory()->create();
     $redirectUri = 'https://example.test/mobile/oauth/callback';
