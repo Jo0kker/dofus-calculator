@@ -312,6 +312,13 @@ class ItemApiController extends Controller
                     break;
                 case 'recipe.ingredients':
                     $withArray['recipe.ingredients'] = function ($q) {};
+                    $withArray['recipe.ingredients.prices'] = function ($q) use ($serverId) {
+                        if ($serverId !== null) {
+                            $q->where('server_id', $serverId);
+                        }
+
+                        $q->where('status', 'approved');
+                    };
                     break;
                 case 'usedInRecipes':
                     $withArray['usedInRecipes'] = function ($q) {};
@@ -381,6 +388,13 @@ class ItemApiController extends Controller
                         'quantity' => $ingredient->pivot->quantity,
                         'level' => $ingredient->level,
                         'type' => $ingredient->type,
+                        'image_url' => $ingredient->image_url,
+                        'prices' => $ingredient->relationLoaded('prices')
+                            ? $ingredient->prices->map(fn ($price) => [
+                                'server_id' => $price->server_id,
+                                'price' => $price->price,
+                            ])->values()
+                            : [],
                     ];
                 });
             }
