@@ -122,8 +122,8 @@ class ItemApiController extends Controller
     {
         // Simple search (legacy support)
         if ($request->has('search')) {
-            $search = $request->input('search');
-            $query->where('name', 'like', "%{$search}%");
+            $search = mb_strtolower($request->input('search'));
+            $query->whereRaw('LOWER(name) LIKE ?', ["%{$search}%"]);
         }
 
         // Advanced field filtering with operators
