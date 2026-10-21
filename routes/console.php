@@ -34,3 +34,10 @@ Schedule::command('passport:purge')
     ->hourly()
     ->withoutOverlapping()
     ->onOneServer();
+
+// Keep Telescope diagnostics without letting its tables exhaust the database disk.
+Schedule::command('telescope:prune --hours=48')
+    ->name('prune-telescope-entries')
+    ->dailyAt('02:30')
+    ->withoutOverlapping()
+    ->onOneServer();
