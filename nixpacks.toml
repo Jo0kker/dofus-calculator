@@ -22,6 +22,8 @@ nixPkgs = [
 
 [phases.build]
 cmds = [
+    # Refuser un build si Nixpacks n'a pas encore les versions corrigees.
+    "sh scripts/check-runtime-security.sh php node",
     # Build des assets frontend avec Vite
     "yarn build",
     
@@ -65,6 +67,9 @@ writeFileSync(outputConfigFile, newConfig);
 
 "start.sh" = '''
 #!/bin/bash
+
+# Nixpacks peut reutiliser un cache ou une version de runtime plus ancienne.
+sh /app/scripts/check-runtime-security.sh php node || exit 1
 
 # Fix permissions for Laravel storage
 chown -R www-data:www-data /app/storage /app/bootstrap/cache

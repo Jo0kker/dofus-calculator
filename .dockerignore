@@ -1,5 +1,7 @@
 node_modules
 vendor
+artifacts
+bootstrap/ssr
 .env
 .env.local
 .git

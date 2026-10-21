@@ -10,9 +10,12 @@ COPY composer.json composer.lock ./
 RUN composer install --no-dev --optimize-autoloader --no-scripts
 
 # Build stage pour les assets JS
-FROM node:22-alpine AS frontend
+FROM node:22.23.4-alpine AS frontend
 
 WORKDIR /app
+
+COPY scripts/check-runtime-security.sh ./scripts/check-runtime-security.sh
+RUN sh scripts/check-runtime-security.sh node
 
 # Copier les fichiers de dépendances
 COPY package.json yarn.lock ./
@@ -28,7 +31,10 @@ COPY --from=composer /app/vendor ./vendor
 RUN yarn build
 
 # Stage PHP principal
-FROM php:8.4-fpm-alpine
+FROM php:8.4.27-fpm-alpine
+
+COPY scripts/check-runtime-security.sh /usr/local/bin/check-runtime-security.sh
+RUN sh /usr/local/bin/check-runtime-security.sh php
 
 # Install system dependencies
 RUN apk add --no-cache \
@@ -41,7 +47,9 @@ RUN apk add --no-cache \
     postgresql-dev \
     nginx \
     supervisor \
-    netcat-openbsd
+    netcat-openbsd \
+    libatomic \
+    libstdc++
 
 # Install PHP extensions
 RUN docker-php-ext-install pdo pdo_pgsql pgsql bcmath opcache
@@ -57,12 +65,17 @@ RUN rm -f .env
 
 # Copy built assets from frontend stage
 COPY --from=frontend /app/public/build ./public/build
+COPY --from=frontend /app/bootstrap/ssr ./bootstrap/ssr
+COPY --from=frontend /app/node_modules ./node_modules
+COPY --from=frontend /usr/local/bin/node /usr/local/bin/node
+RUN sh /usr/local/bin/check-runtime-security.sh node
 
 # Copy vendor from composer stage
 COPY --from=composer /app/vendor ./vendor
+RUN composer check-platform-reqs --no-dev
 
 # Create storage directories and set permissions
-RUN mkdir -p storage/framework/{sessions,views,cache} storage/logs bootstrap/cache \
+RUN mkdir -p storage/framework/sessions storage/framework/views storage/framework/cache storage/logs bootstrap/cache \
     && chmod -R 775 storage bootstrap/cache \
     && chown -R www-data:www-data storage bootstrap/cache
 
